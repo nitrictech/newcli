@@ -18,23 +18,32 @@ package containerengine
 
 import (
 	"bufio"
-	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
+	cliconfig "github.com/docker/cli/cli/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/jhoonb/archivex"
+	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/session/auth/authprovider"
+	"github.com/moby/buildkit/session/filesync"
 	"github.com/pkg/errors"
+	fsutiltypes "github.com/tonistiigi/fsutil/types"
 )
 
 type docker struct {
@@ -65,51 +74,109 @@ func newDocker() (ContainerEngine, error) {
 	return &docker{cli: cli}, err
 }
 
+func tryNodeIdentifier() string {
+	out := cliconfig.Dir() // return config dir as default on permission error
+	if err := os.MkdirAll(cliconfig.Dir(), 0700); err == nil {
+		sessionFile := filepath.Join(cliconfig.Dir(), ".buildNodeID")
+		if _, err := os.Lstat(sessionFile); err != nil {
+			if os.IsNotExist(err) { // create a new file with stored randomness
+				b := make([]byte, 32)
+				if _, err := rand.Read(b); err != nil {
+					return out
+				}
+				if err := ioutil.WriteFile(sessionFile, []byte(hex.EncodeToString(b)), 0600); err != nil {
+					return out
+				}
+			}
+		}
+
+		dt, err := ioutil.ReadFile(sessionFile)
+		if err == nil {
+			return string(dt)
+		}
+	}
+	return out
+}
+
+func getBuildSharedKey(dir string) string {
+	s := sha256.Sum256([]byte(fmt.Sprintf("%s:%s", tryNodeIdentifier(), dir)))
+	return hex.EncodeToString(s[:])
+}
+
+func resetUIDAndGID(_ string, s *fsutiltypes.Stat) bool {
+	s.Uid = 0
+	s.Gid = 0
+	return true
+}
+
 func (d *docker) Build(dockerfile, srcPath, imageTag string, buildArgs map[string]string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), buildTimeout())
 	defer cancel()
 
-	tar := new(archivex.TarFile)
-	dockerBuildContext := bytes.Buffer{}
-	err := tar.CreateWriter("src.tar", &dockerBuildContext)
-	if err != nil {
-		return err
-	}
-	err = tar.AddAll(srcPath, false)
+	s, err := session.NewSession(context.TODO(), filepath.Base(srcPath), getBuildSharedKey(srcPath))
 	if err != nil {
 		return err
 	}
 
-	if strings.Contains(dockerfile, os.TempDir()) {
-		// copy the generated dockerfile into the tar.
-		df, err := os.Open(dockerfile)
-		if err != nil {
-			return err
-		}
-		s, err := os.Stat(dockerfile)
-		if err != nil {
-			return err
-		}
-		err = tar.Add(s.Name(), df, s)
-		if err != nil {
-			return err
-		}
-		dockerfile = s.Name()
+	dockerfileName := filepath.Base(dockerfile)
+	dockerfileDir := filepath.Dir(dockerfile)
+
+	s.Allow(filesync.NewFSSyncProvider([]filesync.SyncedDir{
+		{
+			Name: "context",
+			Dir:  srcPath,
+			Map:  resetUIDAndGID,
+		},
+		{
+			Name: "dockerfile",
+			Dir:  dockerfileDir,
+		},
+	}))
+
+	dockerAuthProvider := authprovider.NewDockerAuthProvider(os.Stderr)
+	s.Allow(dockerAuthProvider)
+
+	dialSession := func(ctx context.Context, proto string, meta map[string][]string) (net.Conn, error) {
+		return d.cli.DialHijack(ctx, "/session", proto, meta)
 	}
-	tar.Close()
+	go (func() error {
+		return s.Run(context.TODO(), dialSession)
+	})()
+
 	opts := types.ImageBuildOptions{
+		Version:        types.BuilderBuildKit,
 		SuppressOutput: false,
-		Dockerfile:     dockerfile,
+		Dockerfile:     dockerfileName,
 		Tags:           []string{imageTag},
 		Remove:         true,
+		RemoteContext:  "client-session",
 		ForceRemove:    true,
 		PullParent:     true,
+		SessionID:      s.ID(),
+		Outputs:        []types.ImageBuildOutput{},
 	}
-	res, err := d.cli.ImageBuild(ctx, &dockerBuildContext, opts)
+	res, err := d.cli.ImageBuild(ctx, nil, opts)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
+
+	//displayCh := make(chan *bClient.SolveStatus)
+
+	//displayStatus := func(out *os.File, displayCh chan *bClient.SolveStatus) {
+	//	var c console.Console
+	//	// TODO: Handle tty output in non-tty environment.
+	//	if cons, err := console.ConsoleFromFile(out); err == nil {
+	//		c = cons
+	//	}
+	//	// not using shared context to not disrupt display but let it finish reporting errors
+
+	//	go func() error {
+	//		return progressui.DisplaySolveStatus(context.TODO(), "", c, out, displayCh)
+	//	}()
+	//}
+
+	//displayStatus(os.Stderr, displayCh)
 
 	return print(res.Body)
 }
