@@ -79,6 +79,8 @@ func (s *Server) Declare(ctx context.Context, req *pb.ResourceDeclareRequest) (*
 		s.function.AddTopic(req.Resource.Name, req.GetTopic())
 	case pb.ResourceType_Policy:
 		s.function.AddPolicy(req.GetPolicy())
+	case pb.ResourceType_Secret:
+		s.function.AddSecret(req.Resource.Name, req.GetSecret())
 	}
 
 	return &pb.ResourceDeclareResponse{}, nil

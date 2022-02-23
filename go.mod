@@ -25,7 +25,7 @@ require (
 	github.com/moby/buildkit v0.9.3 // indirect
 	github.com/moby/moby v20.10.12+incompatible
 	github.com/nitrictech/boxygen v0.0.1-rc.7.0.20211212231606-62c668408f91
-	github.com/nitrictech/nitric v0.13.0-rc.17
+	github.com/nitrictech/nitric v0.14.0-rc.4
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.34
 	github.com/pulumi/pulumi-aws/sdk/v4 v4.33.0

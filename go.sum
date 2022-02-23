@@ -1287,8 +1287,8 @@ github.com/nishanths/predeclared v0.2.1 h1:1TXtjmy4f3YCFjTxRd8zcFHOmoUir+gp0ESzj
 github.com/nishanths/predeclared v0.2.1/go.mod h1:HvkGJcA3naj4lOwnFXFDkFxVtSqQMB9sbB1usJ+xjQE=
 github.com/nitrictech/boxygen v0.0.1-rc.7.0.20211212231606-62c668408f91 h1:gtZZJc7l5pML1eRsqyXe0U7NdQxSa7u/cbyEvnGLBpc=
 github.com/nitrictech/boxygen v0.0.1-rc.7.0.20211212231606-62c668408f91/go.mod h1:2XXi1xEwqitH4/gus1bHyG/IQe8WOniK+pybGTz2y/Y=
-github.com/nitrictech/nitric v0.13.0-rc.17 h1:Pv6aGNP/+kHNVt87QfT06bqpbKIy2s3SYcqYXDIRKE4=
-github.com/nitrictech/nitric v0.13.0-rc.17/go.mod h1:XC6DG1/NrMc59Jzq/1h6SLn6L4foSS67pCqyTpauT3o=
+github.com/nitrictech/nitric v0.14.0-rc.4 h1:x3Ng7TTUSqj/ulKRnEdwHDz9gax5+Hrq1rsoBJ6j/9s=
+github.com/nitrictech/nitric v0.14.0-rc.4/go.mod h1:XC6DG1/NrMc59Jzq/1h6SLn6L4foSS67pCqyTpauT3o=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=

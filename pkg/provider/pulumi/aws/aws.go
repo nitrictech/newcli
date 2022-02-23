@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/resourcegroups"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
+	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/secretsmanager"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/sns"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/sqs"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
@@ -216,6 +217,14 @@ func (a *awsProvider) Deploy(ctx *pulumi.Context) error {
 		}
 	}
 
+	secrets := map[string]*secretsmanager.Secret{}
+	for k := range a.s.Secrets {
+		secrets[k], err = secretsmanager.NewSecret(ctx, k, &secretsmanager.SecretArgs{
+			Name: pulumi.StringPtr(k),
+			Tags: common.Tags(ctx, k),
+		})
+	}
+
 	for k, s := range a.s.Schedules {
 		if len(a.topics) > 0 && s.Target.Type == "topic" && s.Target.Name != "" {
 			a.schedules[k], err = a.newSchedule(ctx, k, ScheduleArgs{
@@ -303,6 +312,11 @@ func (a *awsProvider) Deploy(ctx *pulumi.Context) error {
 		if _, err := newPolicy(ctx, policyName, &PolicyArgs{
 			Policy: p,
 			Resources: &StackResources{
+				Topics:      topics,
+				Queues:      queues,
+				Buckets:     buckets,
+				Collections: collections,
+				Secrets:     secrets,
 				Topics:      a.topics,
 				Queues:      a.queues,
 				Buckets:     a.buckets,

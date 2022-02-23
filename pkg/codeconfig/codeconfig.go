@@ -372,6 +372,9 @@ func (c *codeConfig) ToStack() (*stack.Stack, error) {
 		for k := range f.queues {
 			s.Queues[k] = stack.Queue{}
 		}
+		for k := range f.secrets {
+			s.Secrets[k] = stack.Secret{}
+		}
 
 		// Add policies
 		s.Policies = append(s.Policies, f.policies...)

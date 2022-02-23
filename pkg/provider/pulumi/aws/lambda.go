@@ -117,43 +117,43 @@ func newLambda(ctx *pulumi.Context, name string, args *LambdaArgs, opts ...pulum
 		return nil, err
 	}
 
-	tmpJSON, err = json.Marshal(map[string]interface{}{
-		"Version": "2012-10-17",
-		"Statement": []map[string]interface{}{
-			{
-				"Action": []string{
-					"secretsmanager:DescribeSecret",
-					"secretsmanager:PutSecretValue",
-					"secretsmanager:CreateSecret",
-					"secretsmanager:DeleteSecret",
-					"secretsmanager:CancelRotateSecret",
-					"secretsmanager:ListSecretVersionIds",
-					"secretsmanager:UpdateSecret",
-					"secretsmanager:GetRandomPassword",
-					"secretsmanager:GetResourcePolicy",
-					"secretsmanager:GetSecretValue",
-					"secretsmanager:StopReplicationToReplica",
-					"secretsmanager:ReplicateSecretToRegions",
-					"secretsmanager:RestoreSecret",
-					"secretsmanager:RotateSecret",
-					"secretsmanager:UpdateSecretVersionStage",
-					"secretsmanager:RemoveRegionsFromReplication",
-				},
-				"Effect":   "Allow",
-				"Resource": "*",
-			},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	_, err = iam.NewRolePolicy(ctx, name+"SecretsAccess", &iam.RolePolicyArgs{
-		Role:   res.Role.ID(),
-		Policy: pulumi.String(tmpJSON),
-	}, pulumi.Parent(res))
-	if err != nil {
-		return nil, err
-	}
+	// tmpJSON, err = json.Marshal(map[string]interface{}{
+	// 	"Version": "2012-10-17",
+	// 	"Statement": []map[string]interface{}{
+	// 		{
+	// 			"Action": []string{
+	// 				"secretsmanager:DescribeSecret",
+	// 				"secretsmanager:PutSecretValue",
+	// 				"secretsmanager:CreateSecret",
+	// 				"secretsmanager:DeleteSecret",
+	// 				"secretsmanager:CancelRotateSecret",
+	// 				"secretsmanager:ListSecretVersionIds",
+	// 				"secretsmanager:UpdateSecret",
+	// 				"secretsmanager:GetRandomPassword",
+	// 				"secretsmanager:GetResourcePolicy",
+	// 				"secretsmanager:GetSecretValue",
+	// 				"secretsmanager:StopReplicationToReplica",
+	// 				"secretsmanager:ReplicateSecretToRegions",
+	// 				"secretsmanager:RestoreSecret",
+	// 				"secretsmanager:RotateSecret",
+	// 				"secretsmanager:UpdateSecretVersionStage",
+	// 				"secretsmanager:RemoveRegionsFromReplication",
+	// 			},
+	// 			"Effect":   "Allow",
+	// 			"Resource": "*",
+	// 		},
+	// 	},
+	// })
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// _, err = iam.NewRolePolicy(ctx, name+"SecretsAccess", &iam.RolePolicyArgs{
+	// 	Role:   res.Role.ID(),
+	// 	Policy: pulumi.String(tmpJSON),
+	// }, pulumi.Parent(res))
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	memory := 128
 	if args.Compute.Unit().Memory > 0 {

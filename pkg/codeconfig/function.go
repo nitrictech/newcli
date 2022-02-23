@@ -90,6 +90,7 @@ type FunctionDependencies struct {
 	collections   map[string]*pb.CollectionResource
 	queues        map[string]*pb.QueueResource
 	policies      []*pb.PolicyResource
+	secrets       map[string]*pb.SecretResource
 	lock          sync.RWMutex
 }
 
@@ -174,6 +175,12 @@ func (a *FunctionDependencies) AddQueue(name string, q *pb.QueueResource) {
 	a.queues[name] = q
 }
 
+func (a *FunctionDependencies) AddSecret(name string, s *pb.SecretResource) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	a.secrets[name] = s
+}
+
 // NewFunction - creates a new Nitric Function, ready to register handlers and dependencies.
 func NewFunction(name string) *FunctionDependencies {
 	return &FunctionDependencies{
@@ -185,6 +192,7 @@ func NewFunction(name string) *FunctionDependencies {
 		topics:        make(map[string]*pb.TopicResource),
 		collections:   make(map[string]*pb.CollectionResource),
 		queues:        make(map[string]*pb.QueueResource),
+		secrets:       make(map[string]*pb.SecretResource),
 		policies:      make([]*pb.PolicyResource, 0),
 	}
 }
