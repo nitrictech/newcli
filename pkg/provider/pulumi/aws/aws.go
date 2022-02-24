@@ -55,6 +55,7 @@ type awsProvider struct {
 	buckets     map[string]*s3.Bucket
 	queues      map[string]*sqs.Queue
 	collections map[string]*dynamodb.Table
+	secrets     map[string]*secretsmanager.Secret
 	images      map[string]*common.Image
 	funcs       map[string]*Lambda
 	schedules   map[string]*Schedule
@@ -68,6 +69,7 @@ func New(s *stack.Stack, t *target.Target) common.PulumiProvider {
 		buckets:     map[string]*s3.Bucket{},
 		queues:      map[string]*sqs.Queue{},
 		collections: map[string]*dynamodb.Table{},
+		secrets:     map[string]*secretsmanager.Secret{},
 		images:      map[string]*common.Image{},
 		funcs:       map[string]*Lambda{},
 	}
@@ -312,15 +314,11 @@ func (a *awsProvider) Deploy(ctx *pulumi.Context) error {
 		if _, err := newPolicy(ctx, policyName, &PolicyArgs{
 			Policy: p,
 			Resources: &StackResources{
-				Topics:      topics,
-				Queues:      queues,
-				Buckets:     buckets,
-				Collections: collections,
-				Secrets:     secrets,
 				Topics:      a.topics,
 				Queues:      a.queues,
 				Buckets:     a.buckets,
 				Collections: a.collections,
+				Secrets:     a.secrets,
 			},
 			Principals: principalMap,
 		}); err != nil {
