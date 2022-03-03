@@ -22,47 +22,23 @@ import (
 	"os"
 	"time"
 
-	"github.com/pterm/pterm"
-
 	"github.com/nitrictech/cli/pkg/output"
+	"github.com/pterm/pterm"
 )
-
-var defaultSequence = []string{"⠟", "⠯", "⠷", "⠾", "⠽", "⠻"}
 
 type TaskletFn func(output.Progress) error
 
 type Runner struct {
-	Runner   TaskletFn
-	StartMsg string
-	StopMsg  string
+	Runner     TaskletFn
+	TaskletCtx TaskletContext
+	StartMsg   string
+	StopMsg    string
 }
 
 type Opts struct {
 	Signal        chan os.Signal
 	Timeout       time.Duration
 	SuccessPrefix string
-}
-
-type taskletContext struct {
-	spinner *pterm.SpinnerPrinter
-}
-
-var _ output.Progress = &taskletContext{}
-
-func (c *taskletContext) Debugf(format string, a ...interface{}) {
-	pterm.Debug.Printf(format, a...)
-}
-
-func (c *taskletContext) Busyf(format string, a ...interface{}) {
-	c.spinner.UpdateText(fmt.Sprintf(format, a...))
-}
-
-func (c *taskletContext) Successf(format string, a ...interface{}) {
-	c.spinner.SuccessPrinter.Printf(format, a...)
-}
-
-func (c *taskletContext) Failf(format string, a ...interface{}) {
-	pterm.Error.Printf(format, a...)
 }
 
 func MustRun(runner Runner, opts Opts) {
@@ -72,16 +48,22 @@ func MustRun(runner Runner, opts Opts) {
 }
 
 func Run(runner Runner, opts Opts) error {
-	spinner, err := pterm.DefaultSpinner.WithShowTimer().WithSequence(defaultSequence...).Start(runner.StartMsg)
+
+	if runner.TaskletCtx == nil {
+		// Default to a spinner context
+		runner.TaskletCtx = NewSpinnerContext(runner.StartMsg)
+	}
+
+	err := runner.TaskletCtx.Start()
 	if err != nil {
 		return err
 	}
 	defer func() {
-		_ = spinner.Stop()
+		_ = runner.TaskletCtx.Stop()
 	}()
 
-	if opts.SuccessPrefix != "" {
-		spinner.SuccessPrinter = &pterm.PrefixPrinter{
+	if ctx, ok := runner.TaskletCtx.(*taskletSpinnerContext); ok && opts.SuccessPrefix != "" {
+		ctx.spinner.SuccessPrinter = &pterm.PrefixPrinter{
 			MessageStyle: &pterm.ThemeDefault.SuccessMessageStyle,
 			Prefix: pterm.Prefix{
 				Style: &pterm.ThemeDefault.SuccessPrefixStyle,
@@ -89,8 +71,6 @@ func Run(runner Runner, opts Opts) error {
 			},
 		}
 	}
-
-	tCtx := &taskletContext{spinner: spinner}
 
 	start := time.Now()
 	done := make(chan bool, 1)
@@ -102,7 +82,7 @@ func Run(runner Runner, opts Opts) error {
 	timer := time.NewTimer(opts.Timeout)
 
 	go func() {
-		err = runner.Runner(tCtx)
+		err = runner.Runner(runner.TaskletCtx)
 		if err != nil {
 			doErr <- err
 		}
@@ -122,12 +102,14 @@ func Run(runner Runner, opts Opts) error {
 		time.Sleep(time.Second - elapsed)
 	}
 
-	if err != nil {
-		spinner.Fail(err)
+	if ctx, ok := runner.TaskletCtx.(*taskletSpinnerContext); err != nil && ok {
+		ctx.spinner.Fail(err)
 		return err
 	}
 
-	spinner.SuccessPrinter.Printf("%s (%s)", runner.StopMsg, elapsed.Round(time.Second).String())
+	if ctx, ok := runner.TaskletCtx.(*taskletSpinnerContext); err != nil && ok {
+		ctx.spinner.SuccessPrinter.Printf("%s (%s)", runner.StopMsg, elapsed.Round(time.Second).String())
+	}
 
 	return nil
 }

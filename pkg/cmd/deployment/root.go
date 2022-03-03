@@ -98,9 +98,12 @@ nitric deployment apply -n prod -t aws`,
 		}
 		tasklet.MustRun(buildImages, tasklet.Opts{})
 
+		tCtx, _ := tasklet.NewAreaContext()
+
 		d := &types.Deployment{}
 		deploy := tasklet.Runner{
-			StartMsg: "Deploying..",
+			StartMsg:   "Deploying..",
+			TaskletCtx: tCtx,
 			Runner: func(progress output.Progress) error {
 				d, err = p.Apply(progress, deploymentName)
 				return err
@@ -136,12 +139,15 @@ nitric deployment delete -n prod-aws -s ../project/ -t prod
 		p, err := provider.NewProvider(s, t)
 		cobra.CheckErr(err)
 
+		tCtx, _ := tasklet.NewAreaContext()
+
 		deploy := tasklet.Runner{
 			StartMsg: "Deleting..",
 			Runner: func(progress output.Progress) error {
 				return p.Delete(progress, deploymentName)
 			},
-			StopMsg: "Deployment",
+			TaskletCtx: tCtx,
+			StopMsg:    "Deployment",
 		}
 		tasklet.MustRun(deploy, tasklet.Opts{
 			SuccessPrefix: "Deleted",
