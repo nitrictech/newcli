@@ -200,6 +200,7 @@ func (a *azureProvider) newContainerApps(ctx *pulumi.Context, name string, args 
 		if err != nil {
 			return nil, err
 		}
+		a.funcs[c.Unit().Name] = res.Apps[c.Unit().Name]
 	}
 
 	return res, nil
@@ -223,21 +224,9 @@ type ContainerApp struct {
 	pulumi.ResourceState
 
 	Name          string
-	Sp            *SevicePrinciple
+	Sp            *ServicePrinciple
 	App           *web.ContainerApp
 	Subscriptions map[string]*eventgrid.Topic
-}
-
-// Built in role definitions for Azure
-// See below URL for mapping
-// https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
-var RoleDefinitions = map[string]string{
-	"KVSecretsOfficer":    "b86a8fe4-44ce-4948-aee5-eccb2c155cd7",
-	"BlobDataContrib":     "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
-	"QueueDataContrib":    "974c5e8b-45b9-4653-ba55-5f855dd0fb88",
-	"EventGridDataSender": "d5a91429-5739-47e2-a06b-3470a27159e7",
-	// Access for locating resources
-	"TagContributor": "4a9ae827-6dc8-4573-8ac7-8239d42aa03f",
 }
 
 func (a *azureProvider) newContainerApp(ctx *pulumi.Context, name string, args *ContainerAppArgs, opts ...pulumi.ResourceOption) (*ContainerApp, error) {
@@ -250,16 +239,17 @@ func (a *azureProvider) newContainerApp(ctx *pulumi.Context, name string, args *
 		return nil, err
 	}
 
-	res.Sp, err = newSevicePrinciple(ctx, name, &SevicePrincipleArgs{}, pulumi.Parent(res))
+	res.Sp, err = newServicePrinciple(ctx, name, &ServicePrincipleArgs{}, pulumi.Parent(res))
 	if err != nil {
 		return nil, err
 	}
 
 	scope := pulumi.Sprintf("subscriptions/%s/resourceGroups/%s", args.SubscriptionID, args.ResourceGroupName)
+	// scope := pulumi.Sprintf("%s/resourceGroups/%s", args.SubscriptionID, args.ResourceGroupName)
 
-	// Assign roles to the new SP
-	for defName, id := range RoleDefinitions {
-		_ = ctx.Log.Info("Assignment "+resourceName(ctx, name+defName, AssignmentRT)+" roleDef "+id, &pulumi.LogArgs{Ephemeral: true})
+	// // Assign roles to the new SP
+	// for defName, id := range ServicePrincipalRoleDefinitions {
+	// 	_ = ctx.Log.Info("Assignment "+resourceName(ctx, name+defName, AssignmentRT)+" roleDef "+id, &pulumi.LogArgs{Ephemeral: true})
 
 		_, err = authorization.NewRoleAssignment(ctx, resourceName(ctx, name+defName, AssignmentRT), &authorization.RoleAssignmentArgs{
 			PrincipalId:      res.Sp.ServicePrincipalId,
@@ -271,6 +261,15 @@ func (a *azureProvider) newContainerApp(ctx *pulumi.Context, name string, args *
 			return nil, err
 		}
 	}
+	// 	_, err = authorization.NewAssignment(ctx, resourceName(ctx, name+defName, AssignmentRT), &authorization.AssignmentArgs{
+	// 		PrincipalId:      res.Sp.ServicePrincipalId,
+	// 		RoleDefinitionId: pulumi.Sprintf("%s/resourceGroups/%s/providers/Microsoft.Authorization/roleDefinitions/%s", args.SubscriptionID, args.ResourceGroupName, id),
+	// 		Scope:            scope,
+	// 	}, pulumi.Parent(res))
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	env := web.EnvironmentVarArray{
 		web.EnvironmentVarArgs{

@@ -114,6 +114,7 @@ func (a *azureProvider) newMongoCollections(ctx *pulumi.Context, name string, ar
 		if err != nil {
 			return nil, errors.WithMessage(err, "mongo collection")
 		}
+		a.collections[k] = res.Collections[k]
 	}
 
 	connectionString := pulumi.All(args.ResourceGroup.Name, res.Account.Name).ApplyT(func(args []interface{}) (string, error) {

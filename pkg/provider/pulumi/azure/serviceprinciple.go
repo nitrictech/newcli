@@ -21,10 +21,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type SevicePrincipleArgs struct {
+type ServicePrincipleArgs struct {
+	SubscriptionID    pulumi.StringInput
+	ResourceGroupName pulumi.StringInput
 }
 
-type SevicePrinciple struct {
+type ServicePrinciple struct {
 	pulumi.ResourceState
 
 	Name               string
@@ -34,8 +36,8 @@ type SevicePrinciple struct {
 	ClientSecret       pulumi.StringOutput
 }
 
-func newSevicePrinciple(ctx *pulumi.Context, name string, args *SevicePrincipleArgs, opts ...pulumi.ResourceOption) (*SevicePrinciple, error) {
-	res := &SevicePrinciple{Name: name}
+func newServicePrinciple(ctx *pulumi.Context, name string, args *ServicePrincipleArgs, opts ...pulumi.ResourceOption) (*ServicePrinciple, error) {
+	res := &ServicePrinciple{Name: name}
 	err := ctx.RegisterComponentResource("nitric:principal:AzureAD", name, res, opts...)
 	if err != nil {
 		return nil, err
@@ -59,6 +61,10 @@ func newSevicePrinciple(ctx *pulumi.Context, name string, args *SevicePrincipleA
 	}
 	res.TenantID = sp.ApplicationTenantId
 	res.ServicePrincipalId = pulumi.StringOutput(sp.ID())
+
+	if err != nil {
+		return nil, err
+	}
 
 	spPwd, err := azuread.NewServicePrincipalPassword(ctx, resourceName(ctx, name, ADServicePrincipalPasswordRT), &azuread.ServicePrincipalPasswordArgs{
 		ServicePrincipalId: sp.ID().ToStringOutput(),

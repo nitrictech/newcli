@@ -42,7 +42,7 @@ func Test_resourceName(t *testing.T) {
 		nameSuffix string
 		project    string
 		stackName  string
-		rt         ResouceType
+		rt         ResourceType
 		want       string
 	}{
 		{

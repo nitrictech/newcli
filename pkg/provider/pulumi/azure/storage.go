@@ -70,6 +70,7 @@ func (a *azureProvider) newStorageResources(ctx *pulumi.Context, name string, ar
 		if err != nil {
 			return nil, errors.WithMessage(err, "container create")
 		}
+		a.buckets[bName] = res.Containers[bName]
 	}
 
 	for qName := range a.proj.Queues {
@@ -80,6 +81,7 @@ func (a *azureProvider) newStorageResources(ctx *pulumi.Context, name string, ar
 		if err != nil {
 			return nil, errors.WithMessage(err, "queue create")
 		}
+		a.queues[qName] = res.Queues[qName]
 	}
 	return res, nil
 }

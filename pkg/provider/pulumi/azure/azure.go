@@ -18,7 +18,10 @@ package azure
 
 import (
 	"context"
+	"crypto/md5"
 	_ "embed"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -38,6 +41,7 @@ import (
 	"github.com/nitrictech/cli/pkg/provider/pulumi/common"
 	"github.com/nitrictech/cli/pkg/stack"
 	"github.com/nitrictech/cli/pkg/utils"
+	v1 "github.com/nitrictech/nitric/pkg/api/nitric/v1"
 )
 
 type azureProvider struct {
@@ -46,6 +50,14 @@ type azureProvider struct {
 	tmpDir     string
 	org        string
 	adminEmail string
+
+	topics      map[string]*eventgrid.Topic
+	buckets     map[string]*storage.Container
+	queues      map[string]*storage.Queue
+	collections map[string]*cosmosdb.MongoCollection
+	images      map[string]*common.Image
+	funcs       map[string]*ContainerApp
+	secrets     map[string]*keyvault.Secret
 }
 
 var (
@@ -57,10 +69,38 @@ var (
 	azureNativePluginVersion string
 )
 
+type PrincipalEntry = map[string]pulumi.StringOutput
+type PrincipalMap = map[v1.ResourceType]PrincipalEntry
+
+func policyResourceName(policy *v1.PolicyResource) (string, error) {
+	policyDoc, err := json.Marshal(policy)
+	if err != nil {
+		return "", err
+	}
+
 func New(s *project.Project, t *stack.Config) common.PulumiProvider {
 	return &azureProvider{proj: s, sc: t}
 }
 
+func md5Hash(b []byte) string {
+	hasher := md5.New()
+	hasher.Write(b)
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+func New(s *stack.Stack, t *target.Target) common.PulumiProvider {
+
+	return &azureProvider{
+		s:           s,
+		t:           t,
+		topics:      map[string]*eventgrid.Topic{},
+		buckets:     map[string]*storage.Container{},
+		queues:      map[string]*storage.Queue{},
+		collections: map[string]*cosmosdb.MongoCollection{},
+		images:      map[string]*common.Image{},
+		funcs:       map[string]*ContainerApp{},
+		secrets:     map[string]*keyvault.Secret{},
+	}
+}
 func (a *azureProvider) Plugins() []common.Plugin {
 	return []common.Plugin{
 		{
@@ -223,6 +263,16 @@ func (a *azureProvider) Deploy(ctx *pulumi.Context) error {
 		return err
 	}
 	contAppsArgs.KVaultName = kv.Name
+	for k := range a.s.Secrets {
+		sec, err := keyvault.NewSecret(ctx, resourceName(ctx, k, SecretRT), &keyvault.SecretArgs{
+			Value:      pulumi.String(k), // Default Value for initializing secrets
+			KeyVaultId: kv.ID(),
+		})
+		if err != nil {
+			return err
+		}
+		a.secrets[k] = sec
+	}
 
 	if len(a.proj.Buckets) > 0 || len(a.proj.Queues) > 0 {
 		sr, err := a.newStorageResources(ctx, "storage", &StorageArgs{ResourceGroupName: rg.Name})
@@ -242,6 +292,7 @@ func (a *azureProvider) Deploy(ctx *pulumi.Context) error {
 		if err != nil {
 			return errors.WithMessage(err, "eventgrid topic "+k)
 		}
+		a.topics[k] = contAppsArgs.Topics[k]
 	}
 
 	if len(a.proj.Collections) > 0 {
@@ -255,11 +306,17 @@ func (a *azureProvider) Deploy(ctx *pulumi.Context) error {
 		contAppsArgs.MongoDatabaseConnectionString = mc.ConnectionString
 	}
 
+	principalMap := make(PrincipalMap)
+	principalMap[v1.ResourceType_Function] = make(PrincipalEntry)
+
 	var apps *ContainerApps
 	if len(a.proj.Functions) > 0 || len(a.proj.Containers) > 0 {
 		apps, err = a.newContainerApps(ctx, "containerApps", contAppsArgs)
 		if err != nil {
 			return errors.WithMessage(err, "containerApps")
+		}
+		for k, v := range apps.Apps {
+			principalMap[v1.ResourceType_Function][k] = v.Sp.ServicePrincipalId
 		}
 	}
 
@@ -291,6 +348,32 @@ func (a *azureProvider) Deploy(ctx *pulumi.Context) error {
 		}
 	}
 
+	for _, p := range a.s.Policies {
+		if len(p.Actions) == 0 {
+			ctx.Log.Debug("policy has no actions "+fmt.Sprint(p), &pulumi.LogArgs{Ephemeral: true})
+			continue
+		}
+		policyName, err := policyResourceName(p)
+		if err != nil {
+			return err
+		}
+
+		if _, err := newPolicy(ctx, policyName, &PolicyArgs{
+			Policy: p,
+			Resources: &StackResources{
+				Topics:      a.topics,
+				Queues:      a.queues,
+				Buckets:     a.buckets,
+				Collections: a.collections,
+				Secrets:     a.secrets,
+			},
+			principalMap:      principalMap,
+			ResourceGroupName: rg.Name,
+			SubscriptionID:    current.Id,
+		}); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
