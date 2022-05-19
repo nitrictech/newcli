@@ -149,6 +149,7 @@ func (d *docker) Build(dockerfile, srcPath, imageTag string, buildArgs map[strin
 	opts := types.ImageBuildOptions{
 		SuppressOutput: false,
 		Dockerfile:     dockerfile,
+		Platform:       "linux/amd64",
 		Tags:           []string{strings.ToLower(imageTag), imageTagWithHash},
 		Remove:         true,
 		ForceRemove:    true,
