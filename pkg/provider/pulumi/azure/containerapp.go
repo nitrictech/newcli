@@ -37,7 +37,8 @@ type ContainerAppsArgs struct {
 	SubscriptionID    pulumi.StringInput
 	EnvMap            map[string]string
 
-	Topics map[string]*eventgrid.Topic
+	Topics    map[string]*eventgrid.Topic
+	Schedules map[string]project.Schedule
 
 	KVaultName                    pulumi.StringInput
 	StorageAccountBlobEndpoint    pulumi.StringInput
@@ -231,6 +232,7 @@ type ContainerApp struct {
 
 	Name          string
 	Sp            *ServicePrincipal
+	Environment   *app.ManagedEnvironment
 	App           *app.ContainerApp
 	Subscriptions map[string]*eventgrid.Topic
 }
@@ -251,6 +253,7 @@ func (a *azureProvider) newContainerApp(ctx *pulumi.Context, name string, args *
 	res := &ContainerApp{
 		Name:          name,
 		Subscriptions: map[string]*eventgrid.Topic{},
+		Environment:   args.ManagedEnv,
 	}
 	err := ctx.RegisterComponentResource("nitric:func:ContainerApp", name, res, opts...)
 	if err != nil {
@@ -328,6 +331,7 @@ func (a *azureProvider) newContainerApp(ctx *pulumi.Context, name string, args *
 					PasswordSecretRef: pulumi.String("pwd"),
 				},
 			},
+			Dapr: app.DaprArgs{},
 			Secrets: app.SecretArray{
 				app.SecretArgs{
 					Name:  pulumi.String("pwd"),
@@ -358,6 +362,7 @@ func (a *azureProvider) newContainerApp(ctx *pulumi.Context, name string, args *
 			},
 		},
 	}, pulumi.Parent(res))
+
 	if err != nil {
 		return nil, err
 	}
