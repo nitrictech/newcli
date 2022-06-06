@@ -544,14 +544,8 @@ func (c *codeConfig) ToProject() (*project.Project, error) {
 			newS := project.Schedule{
 				Expression: exp,
 				Target: project.ScheduleTarget{
-					Type: "topic",
-					Name: topicName,
-				},
-				Event: project.ScheduleEvent{
-					PayloadType: "io.nitric.schedule",
-					Payload: map[string]interface{}{
-						"schedule": k,
-					},
+					Type: "function",
+					Name: f.name,
 				},
 			}
 			if current, ok := s.Schedules[k]; ok {

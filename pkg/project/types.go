@@ -75,13 +75,13 @@ type Compute interface {
 // A subset of a NitricEvent
 // excluding it's requestId
 // This will be generated based on the scedule
-type ScheduleEvent struct {
-	PayloadType string                 `yaml:"payloadType"`
-	Payload     map[string]interface{} `yaml:"payload,omitempty"`
-}
+// type ScheduleEvent struct {
+// 	PayloadType string                 `yaml:"payloadType"`
+// 	Payload     map[string]interface{} `yaml:"payload,omitempty"`
+// }
 
 type ScheduleTarget struct {
-	Type string `yaml:"type"` // TODO(Angus) check type: 'topic'; // ; | "queue"
+	Type string `yaml:"type"` // "topic" | "function"
 	Name string `yaml:"name"`
 }
 
@@ -90,7 +90,7 @@ type Schedule struct {
 
 	// The Topic to be targeted for schedule
 	Target ScheduleTarget `yaml:"target"`
-	Event  ScheduleEvent  `yaml:"event"`
+	// Event  ScheduleEvent  `yaml:"event"`
 }
 
 type Collection struct{}
