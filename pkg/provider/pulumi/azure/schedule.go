@@ -23,7 +23,7 @@ type Schedule struct {
 	Component *app.DaprComponent
 }
 
-func newContainerApp(ctx *pulumi.Context, name string, args *ScheduleArgs, opts ...pulumi.ResourceOption) (*Schedule, error) {
+func newSchedule(ctx *pulumi.Context, name string, args *ScheduleArgs, opts ...pulumi.ResourceOption) (*Schedule, error) {
 	res := &Schedule{
 		Name: name,
 	}

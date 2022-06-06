@@ -285,8 +285,17 @@ func (a *azureProvider) Deploy(ctx *pulumi.Context) error {
 	// TODO: Add schedule support
 	// NOTE: Currently CRONTAB support is required, we either need to revisit the design of
 	// our scheduled expressions or implement a workaround or request a feature.
-	if len(a.proj.Schedules) > 0 {
-		_ = ctx.Log.Warn("Schedules are not currently supported for Azure deployments", &pulumi.LogArgs{})
+	schedules := make(map[string]*Schedule)
+	for name, schedule := range a.proj.Schedules {
+		schedules[name], err = newSchedule(ctx, name, &ScheduleArgs{
+			Schedule:          schedule,
+			Functions:         apps,
+			ResourceGroupName: rg.Name,
+		})
+
+		if err != nil {
+			return errors.WithMessage(err, "schedule "+name)
+		}
 	}
 
 	for k, v := range a.proj.ApiDocs {
