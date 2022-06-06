@@ -34,7 +34,6 @@ import (
 	"github.com/golangci/golangci-lint/pkg/sliceutil"
 	multierror "github.com/missionMeteora/toolkit/errors"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi-gcp/sdk/v6/go/gcp/cloudscheduler"
 	"github.com/pulumi/pulumi-gcp/sdk/v6/go/gcp/organizations"
 	"github.com/pulumi/pulumi-gcp/sdk/v6/go/gcp/projects"
 	"github.com/pulumi/pulumi-gcp/sdk/v6/go/gcp/pubsub"
@@ -332,29 +331,13 @@ func (g *gcpProvider) Deploy(ctx *pulumi.Context) error {
 	}
 
 	for k, sched := range g.proj.Schedules {
-		if _, ok := g.topics[sched.Target.Name]; ok {
-			payload := ""
-			if len(sched.Event.Payload) > 0 {
-				eventJSON, err := json.Marshal(sched.Event.Payload)
-				if err != nil {
-					return err
-				}
-				payload = base64.StdEncoding.EncodeToString(eventJSON)
-			}
-			_, err = cloudscheduler.NewJob(ctx, k, &cloudscheduler.JobArgs{
-				TimeZone: pulumi.String("UTC"),
-				PubsubTarget: cloudscheduler.JobPubsubTargetArgs{
-					Attributes: pulumi.ToStringMap(map[string]string{"x-nitric-topic": sched.Target.Name}),
-					TopicName:  pulumi.Sprintf("projects/%s/topics/%s", g.projectId, g.topics[sched.Target.Name].Name),
-					Data:       pulumi.String(payload),
-				},
-				Schedule: pulumi.String(strings.ReplaceAll(sched.Expression, "'", "")),
-			}, defaultResourceOptions)
-			if err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("topic %s defined as target for schedule, but does not exist in the stack", sched.Target.Name)
+		_, err := newSchedule(ctx, k, &ScheduleArgs{
+			Schedule:  sched,
+			Topics:    g.topics,
+			Functions: g.cloudRunners,
+		}, defaultResourceOptions)
+		if err != nil {
+			return errors.WithMessage(err, "unable to deploy schedule")
 		}
 	}
 
