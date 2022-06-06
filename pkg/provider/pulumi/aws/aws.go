@@ -253,19 +253,14 @@ func (a *awsProvider) Deploy(ctx *pulumi.Context) error {
 	}
 
 	for k, s := range a.proj.Schedules {
-		if len(a.topics) > 0 && s.Target.Type == "topic" && s.Target.Name != "" {
-			topic, ok := a.topics[s.Target.Name]
-			if !ok {
-				return fmt.Errorf("schedule %s does not have a topic %s", k, s.Target.Name)
-			}
-			a.schedules[k], err = a.newSchedule(ctx, k, ScheduleArgs{
-				Expression: s.Expression,
-				TopicArn:   topic.Arn,
-				TopicName:  topic.Name,
-			})
-			if err != nil {
-				return errors.WithMessage(err, "schedule "+k)
-			}
+		a.schedules[k], err = a.newSchedule(ctx, k, ScheduleArgs{
+			Expression: s.Expression,
+			Functions:  a.funcs,
+			Topics:     a.topics,
+			Schedule:   s,
+		})
+		if err != nil {
+			return errors.WithMessage(err, "schedule "+k)
 		}
 	}
 
