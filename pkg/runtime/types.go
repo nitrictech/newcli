@@ -41,7 +41,7 @@ const (
 	RuntimeUnknown RuntimeExt = ""
 )
 
-var commonIgnore = []string{".nitric/", ".git/", ".idea/", ".vscode/", ".github/", "*.dockerfile", "*.dockerignore"}
+var commonIgnore = []string{".nitric/", "!.nitric/*.yaml", ".git/", ".idea/", ".vscode/", ".github/", "*.dockerfile", "*.dockerignore"}
 
 func NewRunTimeFromHandler(handler string) (Runtime, error) {
 	rt := RuntimeExt(strings.Replace(filepath.Ext(handler), ".", "", -1))

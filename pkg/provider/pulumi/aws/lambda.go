@@ -95,19 +95,33 @@ func newLambda(ctx *pulumi.Context, name string, args *LambdaArgs, opts ...pulum
 		return nil, err
 	}
 
+	telemeteryActions := []string{
+		"xray:PutTraceSegments",
+		"xray:PutTelemetryRecords",
+		"xray:GetSamplingRules",
+		"xray:GetSamplingTargets",
+		"xray:GetSamplingStatisticSummaries",
+		"ssm:GetParameters",
+		//		"logs:CreateLogGroup",
+		"logs:CreateLogStream",
+		"logs:PutLogEvents",
+	}
+
+	listActions := []string{
+		"sns:ListTopics",
+		"sqs:ListQueues",
+		"dynamodb:ListTables",
+		"s3:ListAllMyBuckets",
+		"tag:GetResources",
+	}
+
 	// Add resource list permissions
 	// Currently the membrane will use list operations
 	tmpJSON, err = json.Marshal(map[string]interface{}{
 		"Version": "2012-10-17",
 		"Statement": []map[string]interface{}{
 			{
-				"Action": []string{
-					"sns:ListTopics",
-					"sqs:ListQueues",
-					"dynamodb:ListTables",
-					"s3:ListAllMyBuckets",
-					"tag:GetResources",
-				},
+				"Action":   append(listActions, telemeteryActions...),
 				"Effect":   "Allow",
 				"Resource": "*",
 			},

@@ -25,14 +25,17 @@ import (
 //go:embed membraneversion.txt
 var DefaultMembraneVersion string
 
+//go:embed otel-collector-version.txt
+var DefaultOTELCollectorVersion string
+
 var _ Compute = &Function{}
+
+func (f *Function) String() string {
+	return fmt.Sprintf("%s(%s) telemetry:%v", f.Name, f.Handler, f.Telemetry)
+}
 
 func (f *Function) Unit() *ComputeUnit {
 	return &f.ComputeUnit
-}
-
-func (f *Function) VersionString(s *Project) string {
-	return DefaultMembraneVersion
 }
 
 func (f *Function) RelativeHandlerPath(s *Project) (string, error) {

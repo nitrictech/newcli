@@ -44,8 +44,9 @@ import (
 )
 
 type azureFunctionConfig struct {
-	Memory  *int `yaml:"memory,omitempty"`
-	Timeout *int `yaml:"timeout,omitempty"`
+	Memory    *int  `yaml:"memory,omitempty"`
+	Timeout   *int  `yaml:"timeout,omitempty"`
+	Telemetry *bool `yaml:"telemetry,omitempty"`
 }
 
 type azureStackConfig struct {
@@ -201,6 +202,10 @@ func (a *azureProvider) Validate() error {
 
 		if fc.Timeout != nil && *fc.Timeout < 15 {
 			errList.Push(fmt.Errorf("function config %s requires \"timeout\" to be greater than 15 seconds", fn))
+		}
+
+		if fc.Telemetry != nil {
+			errList.Push(fmt.Errorf("function config %s telemetry is not supported on azure yet", fn))
 		}
 	}
 

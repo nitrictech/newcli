@@ -52,6 +52,10 @@ RUN ncc build ${HANDLER} -m --v8-cache -o lib/
 
 FROM node:alpine as final
 
+RUN apk update && \
+    apk add --no-cache ca-certificates && \
+    update-ca-certificates
+
 COPY --from=build "package.json" "package.json"
 
 COPY --from=build "node_modules/" "node_modules/"
@@ -66,10 +70,6 @@ ENTRYPOINT ["node", "index.js"]`,
 			wantFwriter: `FROM golang:alpine as build
 
 ARG HANDLER
-
-RUN apk update
-RUN apk upgrade
-RUN apk add --no-cache git gcc g++ make
 
 WORKDIR /app/
 
@@ -86,7 +86,9 @@ FROM alpine
 COPY --from=build /bin/main /bin/main
 
 RUN chmod +x-rw /bin/main
-RUN apk add --no-cache tzdata
+RUN apk update && \
+    apk add --no-cache tzdata ca-certificates && \
+    update-ca-certificates
 
 ENTRYPOINT ["/bin/main"]`,
 		},
@@ -98,6 +100,10 @@ ENTRYPOINT ["/bin/main"]`,
 ARG HANDLER
 
 ENV HANDLER=${HANDLER}
+
+RUN apt-get update -y && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates
 
 RUN pip install --upgrade pip
 
@@ -116,6 +122,10 @@ ENTRYPOINT python $HANDLER`,
 
 ARG HANDLER
 ENV HANDLER=${HANDLER}
+
+RUN apk update && \
+    apk add --no-cache ca-certificates && \
+    update-ca-certificates
 
 COPY package.json *.lock *-lock.json /
 

@@ -56,6 +56,8 @@ var requiredServices = []string{
 	"secretmanager.googleapis.com",
 	// Enable Cloud Tasks API
 	"cloudtasks.googleapis.com",
+	// Enable monitoring API
+	"monitoring.googleapis.com",
 }
 
 func newProject(ctx *pulumi.Context, name string, args *ProjectArgs, opts ...pulumi.ResourceOption) (*Project, error) {

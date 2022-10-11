@@ -50,6 +50,9 @@ type ComputeUnit struct {
 
 	// The max running time of the function: default 15
 	Timeout int `yaml:"timeout,omitempty"`
+
+	// Telemetry enabled
+	Telemetry bool `yaml:"telemetry,omitempty"`
 }
 
 type Function struct {
@@ -73,6 +76,7 @@ type Compute interface {
 	ImageTagName(s *Project, provider string) string
 	Unit() *ComputeUnit
 	Workers() int
+	String() string
 }
 
 // A subset of a NitricEvent

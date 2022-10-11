@@ -18,8 +18,14 @@ package runtime
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"text/template"
+
+	"github.com/google/uuid"
 
 	"github.com/nitrictech/cli/pkg/containerengine"
 )
@@ -30,13 +36,70 @@ ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
 ARG MEMBRANE_URI
+ARG MEMBRANE_VERSION
+
+ENV MEMBRANE_VERSION ${MEMBRANE_VERSION}
 
 ADD ${MEMBRANE_URI} /bin/membrane
 
 RUN chmod +x-rw /bin/membrane
 
+
 CMD [%s]
 ENTRYPOINT ["/bin/membrane"]
+`
+
+const wrapperDockerFileWithOTel = `
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+ARG MEMBRANE_URI
+ARG MEMBRANE_VERSION
+
+ENV MEMBRANE_VERSION ${MEMBRANE_VERSION}
+
+RUN apk add --no-cache wget && \
+    wget -q ${MEMBRANE_URI} -O /bin/membrane && \
+    chmod +x-rw /bin/membrane
+
+ARG OTELCOL_CONTRIB_URI
+
+ADD ${OTELCOL_CONTRIB_URI} /usr/bin/
+RUN tar -xzf /usr/bin/otelcol*.tar.gz &&\
+    rm /usr/bin/otelcol*.tar.gz &&\
+	mv /otelcol-contrib /usr/bin/
+
+ARG OTELCOL_CONFIG
+COPY ${OTELCOL_CONFIG} /etc/otelcol/config.yaml
+RUN chmod -R a+r /etc/otelcol
+
+CMD [%s]
+ENTRYPOINT ["/bin/membrane"]
+`
+
+const otelTemplate = `
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+processors:
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [{{.TraceName}}]
+    metrics:
+      receivers: [otlp]
+      exporters: [{{.MetricName}}]
+
+exporters:
+  {{ .TraceName }}: {{ .TraceExporterConfig }}
+  {{ if ne .MetricName .TraceName }}
+  {{ .MetricName }}: {{ .MetricExporterConfig }}
+  {{ end }}
 `
 
 // CmdFromImage - Takes the existing Entrypoint and CMD from and image and makes it a new CMD to be wrapped by a new entrypoint
@@ -62,29 +125,128 @@ type WrappedBuildInput struct {
 	Dockerfile string
 }
 
-func WrapperBuildArgs(imageName string, provider string, version string) (*WrappedBuildInput, error) {
+type otelConfig struct {
+	MetricName           string
+	TraceName            string
+	MetricExporterConfig string
+	TraceExporterConfig  string
+}
+
+func telemetryConfig(provider string) (string, error) {
+	t := template.Must(template.New("otelconfig").Parse(otelTemplate))
+	config := &strings.Builder{}
+
+	switch provider {
+	case "aws":
+		err := t.Execute(config, &otelConfig{
+			TraceName:  "awsxray",
+			MetricName: "awsemf",
+		})
+		if err != nil {
+			return "", err
+		}
+
+	case "gcp":
+		err := t.Execute(config, &otelConfig{
+			TraceName:           "googlecloud",
+			MetricName:          "googlecloud",
+			TraceExporterConfig: `{"retry_on_failure": {"enabled": false}}`,
+		})
+		if err != nil {
+			return "", err
+		}
+
+	default:
+		return "", errors.New("telemetry not supported on this cloud yet")
+	}
+
+	return config.String(), nil
+}
+
+func yamlConfigFile(dir, name string) (*os.File, error) {
+	// create a more stable file name for the hashing
+	err := os.MkdirAll(filepath.Join(dir, ".nitric"), os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+
+	return os.Create(filepath.Join(dir, ".nitric", name+".yaml"))
+}
+
+type WrapperBuildArgsConfig struct {
+	ProjectDir           string
+	ImageName            string
+	Provider             string
+	MembraneVersion      string
+	OtelCollectorVersion string
+	Telemetry            bool
+}
+
+func WrapperBuildArgs(config *WrapperBuildArgsConfig) (*WrappedBuildInput, error) {
 	ce, err := containerengine.Discover()
 	if err != nil {
 		return nil, err
 	}
 
-	cmd, err := cmdFromImage(ce, imageName)
+	cmd, err := cmdFromImage(ce, config.ImageName)
 	if err != nil {
 		return nil, err
 	}
 
-	membraneName := "membrane-" + provider
-	fetchFrom := fmt.Sprintf("https://github.com/nitrictech/nitric/releases/download/%s/%s", version, membraneName)
+	membraneName := "membrane-" + config.Provider
+	fetchFrom := fmt.Sprintf("https://github.com/nitrictech/nitric/releases/download/%s/%s", config.MembraneVersion, membraneName)
+	membraneVersion := config.MembraneVersion
 
-	if version == "latest" {
-		fetchFrom = fmt.Sprintf("https://github.com/nitrictech/nitric/releases/%s/download/%s", version, membraneName)
+	if os.Getenv("TEST_MEMBRANE_URI") != "" {
+		membraneVersion = uuid.NewString() // to get the development membrane re-inserted.
+		fetchFrom = fmt.Sprintf("%s?foo=%s", os.Getenv("TEST_MEMBRANE_URI"), membraneVersion)
+	}
+
+	if config.Telemetry {
+		tf, err := yamlConfigFile(config.ProjectDir, "otel-config")
+		if err != nil {
+			return nil, err
+		}
+
+		defer tf.Close()
+
+		cfg, err := telemetryConfig(config.Provider)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = tf.WriteString(cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		relConfig, err := filepath.Rel(config.ProjectDir, tf.Name())
+		if err != nil {
+			return nil, err
+		}
+
+		otelCollectorVer := fmt.Sprintf(
+			"https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/%s/otelcol-contrib_%s_linux_amd64.tar.gz",
+			config.OtelCollectorVersion, strings.TrimSpace(strings.TrimLeft(config.OtelCollectorVersion, "v")))
+
+		return &WrappedBuildInput{
+			Dockerfile: fmt.Sprintf(wrapperDockerFileWithOTel, strings.Join(cmd, ",")),
+			Args: map[string]string{
+				"MEMBRANE_URI":        fetchFrom,
+				"MEMBRANE_VERSION":    membraneVersion,
+				"BASE_IMAGE":          config.ImageName,
+				"OTELCOL_CONFIG":      relConfig,
+				"OTELCOL_CONTRIB_URI": otelCollectorVer,
+			},
+		}, nil
 	}
 
 	return &WrappedBuildInput{
 		Dockerfile: fmt.Sprintf(wrapperDockerFile, strings.Join(cmd, ",")),
 		Args: map[string]string{
-			"MEMBRANE_URI": fetchFrom,
-			"BASE_IMAGE":   imageName,
+			"MEMBRANE_URI":     fetchFrom,
+			"MEMBRANE_VERSION": membraneVersion,
+			"BASE_IMAGE":       config.ImageName,
 		},
 	}, nil
 }

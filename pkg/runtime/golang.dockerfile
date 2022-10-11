@@ -2,10 +2,6 @@ FROM golang:alpine as build
 
 ARG HANDLER
 
-RUN apk update
-RUN apk upgrade
-RUN apk add --no-cache git gcc g++ make
-
 WORKDIR /app/
 
 COPY go.mod *.sum ./
@@ -21,6 +17,8 @@ FROM alpine
 COPY --from=build /bin/main /bin/main
 
 RUN chmod +x-rw /bin/main
-RUN apk add --no-cache tzdata
+RUN apk update && \
+    apk add --no-cache tzdata ca-certificates && \
+    update-ca-certificates
 
 ENTRYPOINT ["/bin/main"]

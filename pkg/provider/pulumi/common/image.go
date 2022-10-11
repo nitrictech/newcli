@@ -53,7 +53,15 @@ func NewImage(ctx *pulumi.Context, name string, args *ImageArgs, opts ...pulumi.
 		return nil, err
 	}
 
-	buildArgs, err := runtime.WrapperBuildArgs(args.SourceImage, args.Provider, project.DefaultMembraneVersion)
+	buildArgs, err := runtime.WrapperBuildArgs(
+		&runtime.WrapperBuildArgsConfig{
+			ProjectDir:           args.ProjectDir,
+			ImageName:            args.SourceImage,
+			Provider:             args.Provider,
+			MembraneVersion:      project.DefaultMembraneVersion,
+			OtelCollectorVersion: project.DefaultOTELCollectorVersion,
+			Telemetry:            args.Compute.Unit().Telemetry,
+		})
 	if err != nil {
 		return nil, err
 	}

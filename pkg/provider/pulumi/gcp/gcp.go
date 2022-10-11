@@ -56,8 +56,9 @@ import (
 )
 
 type gcpFunctionConfig struct {
-	Memory  *int `yaml:"memory,omitempty"`
-	Timeout *int `yaml:"timeout,omitempty"`
+	Memory    *int  `yaml:"memory,omitempty"`
+	Timeout   *int  `yaml:"timeout,omitempty"`
+	Telemetry *bool `yaml:"telemetry,omitempty"`
 }
 
 type gcpStackConfig struct {
@@ -242,6 +243,7 @@ func (g *gcpProvider) Configure(ctx context.Context, autoStack *auto.Stack) erro
 	for fn, f := range g.proj.Functions {
 		f.ComputeUnit.Memory = 512
 		f.ComputeUnit.Timeout = 15
+		f.ComputeUnit.Telemetry = false
 
 		if dok {
 			if dc.Memory != nil {
@@ -250,6 +252,10 @@ func (g *gcpProvider) Configure(ctx context.Context, autoStack *auto.Stack) erro
 
 			if dc.Timeout != nil {
 				f.ComputeUnit.Timeout = *dc.Timeout
+			}
+
+			if dc.Telemetry != nil {
+				f.ComputeUnit.Telemetry = *dc.Telemetry
 			}
 		}
 
@@ -261,6 +267,10 @@ func (g *gcpProvider) Configure(ctx context.Context, autoStack *auto.Stack) erro
 
 			if fc.Timeout != nil {
 				f.ComputeUnit.Timeout = *fc.Timeout
+			}
+
+			if fc.Telemetry != nil {
+				f.ComputeUnit.Telemetry = *fc.Telemetry
 			}
 		}
 
@@ -280,6 +290,7 @@ func (g *gcpProvider) setToken() error {
 		creds, err := google.FindDefaultCredentialsWithParams(context.Background(), google.CredentialsParams{
 			Scopes: []string{
 				"https://www.googleapis.com/auth/cloud-platform",
+				"https://www.googleapis.com/auth/trace.append",
 			},
 		})
 		if err != nil {
@@ -441,19 +452,38 @@ func (g *gcpProvider) Deploy(ctx *pulumi.Context) error {
 		return errors.WithMessage(err, "base customRole id")
 	}
 
+	perms := []string{
+		"storage.buckets.list",
+		"storage.buckets.get",
+		"cloudtasks.queues.get",
+		"cloudtasks.tasks.create",
+		"cloudtrace.traces.patch",
+		"monitoring.timeSeries.create",
+		// permission for blob signing
+		// this is safe as only permissions this account has are delegated
+		"iam.serviceAccounts.signBlob",
+	}
+
+	for _, fc := range g.sc.Config {
+		if fc.Telemetry != nil && *fc.Telemetry {
+			perms = append(perms, []string{
+				"monitoring.metricDescriptors.create",
+				"monitoring.metricDescriptors.get",
+				"monitoring.metricDescriptors.list",
+				"monitoring.monitoredResourceDescriptors.get",
+				"monitoring.monitoredResourceDescriptors.list",
+				"monitoring.timeSeries.create",
+			}...)
+
+			break
+		}
+	}
+
 	// setup a basic IAM role for general access and resource discovery
 	baseComputeRole, err := projects.NewIAMCustomRole(ctx, "base-role", &projects.IAMCustomRoleArgs{
-		Title: pulumi.String(g.sc.Name + "-functions-base-role"),
-		Permissions: pulumi.ToStringArray([]string{
-			"storage.buckets.list",
-			"storage.buckets.get",
-			"cloudtasks.queues.get",
-			"cloudtasks.tasks.create",
-			// permission for blob signing
-			// this is safe as only permissions this account has are delegated
-			"iam.serviceAccounts.signBlob",
-		}),
-		RoleId: baseCustomRoleId.ID(),
+		Title:       pulumi.String(g.sc.Name + "-functions-base-role"),
+		Permissions: pulumi.ToStringArray(perms),
+		RoleId:      baseCustomRoleId.ID(),
 	})
 	if err != nil {
 		return errors.WithMessage(err, "base customRole")

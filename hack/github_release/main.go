@@ -14,20 +14,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package project
+package main
 
 import (
-	_ "embed"
-	"testing"
-
-	"github.com/hashicorp/go-version"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
 )
 
-func TestFunctionVersionString(t *testing.T) {
-	f := &Function{}
-
-	_, err := version.NewVersion(f.VersionString(nil))
-	if err != nil {
-		t.Error(err)
+func main() {
+	if len(os.Args) != 3 {
+		fmt.Println("usage <owner> <repo>")
+		os.Exit(1)
 	}
+
+	owner := os.Args[1]
+	repo := os.Args[2]
+
+	resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	result := map[string]any{}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	fmt.Print(result["tag_name"])
 }

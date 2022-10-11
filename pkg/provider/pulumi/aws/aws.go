@@ -54,8 +54,9 @@ import (
 )
 
 type awsFunctionConfig struct {
-	Memory  *int `yaml:"memory,omitempty"`
-	Timeout *int `yaml:"timeout,omitempty"`
+	Memory    *int  `yaml:"memory,omitempty"`
+	Timeout   *int  `yaml:"timeout,omitempty"`
+	Telemetry *bool `yaml:"telemetry,omitempty"`
 }
 
 type awsStackConfig struct {
@@ -197,6 +198,7 @@ func (a *awsProvider) Configure(ctx context.Context, autoStack *auto.Stack) erro
 	for fn, f := range a.proj.Functions {
 		f.ComputeUnit.Memory = 512
 		f.ComputeUnit.Timeout = 15
+		f.ComputeUnit.Telemetry = false
 
 		if dok {
 			if dc.Memory != nil {
@@ -205,6 +207,10 @@ func (a *awsProvider) Configure(ctx context.Context, autoStack *auto.Stack) erro
 
 			if dc.Timeout != nil {
 				f.ComputeUnit.Timeout = *dc.Timeout
+			}
+
+			if dc.Telemetry != nil {
+				f.ComputeUnit.Telemetry = *dc.Telemetry
 			}
 		}
 
@@ -216,6 +222,10 @@ func (a *awsProvider) Configure(ctx context.Context, autoStack *auto.Stack) erro
 
 			if fc.Timeout != nil {
 				f.ComputeUnit.Timeout = *fc.Timeout
+			}
+
+			if fc.Telemetry != nil {
+				f.ComputeUnit.Telemetry = *fc.Telemetry
 			}
 		}
 

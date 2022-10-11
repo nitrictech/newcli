@@ -42,7 +42,7 @@ func TestBuildBaseImages(t *testing.T) {
 	s.Functions = map[string]project.Function{"foo": {Handler: "functions/list.ts", ComputeUnit: project.ComputeUnit{Name: "foo"}}}
 
 	me.EXPECT().Build(gomock.Any(), dir, "-foo", gomock.Any(), []string{
-		".nitric/", ".git/", ".idea/", ".vscode/", ".github/", "*.dockerfile", "*.dockerignore", "node_modules/",
+		".nitric/", "!.nitric/*.yaml", ".git/", ".idea/", ".vscode/", ".github/", "*.dockerfile", "*.dockerignore", "node_modules/",
 	})
 
 	containerengine.DiscoveredEngine = me

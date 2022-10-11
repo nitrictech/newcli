@@ -18,6 +18,10 @@ RUN ncc build ${HANDLER} -m --v8-cache -o lib/
 
 FROM node:alpine as final
 
+RUN apk update && \
+    apk add --no-cache ca-certificates && \
+    update-ca-certificates
+
 COPY --from=build "package.json" "package.json"
 
 COPY --from=build "node_modules/" "node_modules/"

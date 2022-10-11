@@ -22,6 +22,10 @@ import (
 
 var _ Compute = &Container{}
 
+func (c *Container) String() string {
+	return fmt.Sprintf("%s(%s)", c.Name, c.Dockerfile)
+}
+
 func (c *Container) Unit() *ComputeUnit {
 	return &c.ComputeUnit
 }
