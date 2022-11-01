@@ -30,83 +30,14 @@ import (
 	"github.com/nitrictech/cli/pkg/containerengine"
 )
 
-const wrapperDockerFile = `
-ARG BASE_IMAGE
-
-FROM ${BASE_IMAGE}
-
-ARG MEMBRANE_URI
-ARG MEMBRANE_VERSION
-
-ENV MEMBRANE_VERSION ${MEMBRANE_VERSION}
-
-ADD ${MEMBRANE_URI} /bin/membrane
-
-RUN chmod +x-rw /bin/membrane
-
-CMD [%s]
-ENTRYPOINT ["/bin/membrane"]
-`
-
-const wrapperDockerFileWithOTel = `
-ARG BASE_IMAGE
-
-FROM ${BASE_IMAGE}
-
-ARG MEMBRANE_URI
-ARG MEMBRANE_VERSION
-
-ENV MEMBRANE_VERSION ${MEMBRANE_VERSION}
-
-RUN apk add --no-cache wget && \
-    wget -q ${MEMBRANE_URI} -O /bin/membrane && \
-    chmod +x-rw /bin/membrane
-
-ARG OTELCOL_CONTRIB_URI
-
-ADD ${OTELCOL_CONTRIB_URI} /usr/bin/
-RUN tar -xzf /usr/bin/otelcol*.tar.gz &&\
-    rm /usr/bin/otelcol*.tar.gz &&\
-	mv /otelcol-contrib /usr/bin/
-
-ARG OTELCOL_CONFIG
-COPY ${OTELCOL_CONFIG} /etc/otelcol/config.yaml
-RUN chmod -R a+r /etc/otelcol
-
-ARG NITRIC_TRACE_SAMPLE_PERCENT
-ENV NITRIC_TRACE_SAMPLE_PERCENT ${NITRIC_TRACE_SAMPLE_PERCENT}
-
-CMD [%s]
-ENTRYPOINT ["/bin/membrane"]
-`
-
-const otelTemplate = `
-receivers:
-  otlp:
-    protocols:
-      grpc:
-
-processors:
-
-extensions:{{range $val := .Extensions}}
-  {{$val}}:{{end}}
-
-service:
-  extensions:{{range $val := .Extensions}}
-  - {{$val}}:{{end}}
-
-  pipelines:
-    traces:
-      receivers: [otlp]
-      exporters: [{{.TraceName}}]
-    metrics:
-      receivers: [otlp]
-      exporters: [{{.MetricName}}]
-
-exporters:
-  {{ .TraceName }}: {{ .TraceExporterConfig }}
-  {{ if ne .MetricName .TraceName }}{{ .MetricName }}: {{ .MetricExporterConfig }}{{ end }}
-`
+var (
+	//go:embed wrapper.dockerfile
+	wrapperDockerFile string
+	//go:embed wrapper-telemetry.dockerfile
+	wrapperTelemetryDockerFile string
+	//go:embed otel-collector.yaml
+	otelCollectorTemplate string
+)
 
 // CmdFromImage - Takes the existing Entrypoint and CMD from and image and makes it a new CMD to be wrapped by a new entrypoint
 func cmdFromImage(ce containerengine.ContainerEngine, imageName string) ([]string, error) {
@@ -140,7 +71,7 @@ type otelConfig struct {
 }
 
 func telemetryConfig(provider string) (string, error) {
-	t := template.Must(template.New("otelconfig").Parse(otelTemplate))
+	t := template.Must(template.New("otelconfig").Parse(otelCollectorTemplate))
 	config := &strings.Builder{}
 
 	switch provider {
@@ -239,7 +170,7 @@ func WrapperBuildArgs(config *WrapperBuildArgsConfig) (*WrappedBuildInput, error
 			config.OtelCollectorVersion, strings.TrimSpace(strings.TrimLeft(config.OtelCollectorVersion, "v")))
 
 		return &WrappedBuildInput{
-			Dockerfile: fmt.Sprintf(wrapperDockerFileWithOTel, strings.Join(cmd, ",")),
+			Dockerfile: fmt.Sprintf(wrapperTelemetryDockerFile, strings.Join(cmd, ",")),
 			Args: map[string]string{
 				"MEMBRANE_URI":                fetchFrom,
 				"MEMBRANE_VERSION":            membraneVersion,

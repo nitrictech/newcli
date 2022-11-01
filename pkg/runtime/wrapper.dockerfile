@@ -1,0 +1,15 @@
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+ARG MEMBRANE_URI
+ARG MEMBRANE_VERSION
+
+ENV MEMBRANE_VERSION ${MEMBRANE_VERSION}
+
+ADD ${MEMBRANE_URI} /bin/membrane
+
+RUN chmod +x-rw /bin/membrane
+
+CMD [%s]
+ENTRYPOINT ["/bin/membrane"]

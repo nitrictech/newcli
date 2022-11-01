@@ -33,8 +33,7 @@ func Test_telemetryConfig(t *testing.T) {
 		{
 			name:     "aws",
 			provider: "aws",
-			want: `
-receivers:
+			want: `receivers:
   otlp:
     protocols:
       grpc:
@@ -56,14 +55,12 @@ service:
 
 exporters:
   awsxray: 
-  awsemf: 
-`,
+  awsemf: `,
 		},
 		{
 			name:     "gcp",
 			provider: "gcp",
-			want: `
-receivers:
+			want: `receivers:
   otlp:
     protocols:
       grpc:
@@ -85,8 +82,7 @@ service:
 
 exporters:
   googlecloud: {"retry_on_failure": {"enabled": false}}
-  
-`,
+  `,
 		},
 	}
 	for _, tt := range tests {
