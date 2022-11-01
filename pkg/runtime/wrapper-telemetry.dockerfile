@@ -7,9 +7,9 @@ ARG MEMBRANE_VERSION
 
 ENV MEMBRANE_VERSION ${MEMBRANE_VERSION}
 
-RUN apk add --no-cache wget && \
-    wget -q ${MEMBRANE_URI} -O /bin/membrane && \
-    chmod +x-rw /bin/membrane
+ADD ${MEMBRANE_URI} /bin/membrane
+
+RUN chmod +x-rw /bin/membrane
 
 ARG OTELCOL_CONTRIB_URI
 

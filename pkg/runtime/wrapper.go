@@ -25,8 +25,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/google/uuid"
-
 	"github.com/nitrictech/cli/pkg/containerengine"
 )
 
@@ -133,14 +131,7 @@ func WrapperBuildArgs(config *WrapperBuildArgsConfig) (*WrappedBuildInput, error
 		return nil, err
 	}
 
-	membraneName := "membrane-" + config.Provider
-	fetchFrom := fmt.Sprintf("https://github.com/nitrictech/nitric/releases/download/%s/%s", config.MembraneVersion, membraneName)
-	membraneVersion := config.MembraneVersion
-
-	if os.Getenv("TEST_MEMBRANE_URI") != "" {
-		membraneVersion = uuid.NewString() // to get the development membrane re-inserted.
-		fetchFrom = fmt.Sprintf("%s?foo=%s", os.Getenv("TEST_MEMBRANE_URI"), membraneVersion)
-	}
+	fetchFrom := fmt.Sprintf("https://github.com/nitrictech/nitric/releases/download/%s/membrane-%s", config.MembraneVersion, config.Provider)
 
 	if config.Telemetry > 0 {
 		tf, err := yamlConfigFile(config.ProjectDir, "otel-config")
@@ -173,7 +164,7 @@ func WrapperBuildArgs(config *WrapperBuildArgsConfig) (*WrappedBuildInput, error
 			Dockerfile: fmt.Sprintf(wrapperTelemetryDockerFile, strings.Join(cmd, ",")),
 			Args: map[string]string{
 				"MEMBRANE_URI":                fetchFrom,
-				"MEMBRANE_VERSION":            membraneVersion,
+				"MEMBRANE_VERSION":            config.MembraneVersion,
 				"BASE_IMAGE":                  config.ImageName,
 				"OTELCOL_CONFIG":              relConfig,
 				"OTELCOL_CONTRIB_URI":         otelCollectorVer,
@@ -186,7 +177,7 @@ func WrapperBuildArgs(config *WrapperBuildArgsConfig) (*WrappedBuildInput, error
 		Dockerfile: fmt.Sprintf(wrapperDockerFile, strings.Join(cmd, ",")),
 		Args: map[string]string{
 			"MEMBRANE_URI":     fetchFrom,
-			"MEMBRANE_VERSION": membraneVersion,
+			"MEMBRANE_VERSION": config.MembraneVersion,
 			"BASE_IMAGE":       config.ImageName,
 		},
 	}, nil
