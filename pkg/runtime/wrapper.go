@@ -44,7 +44,6 @@ ADD ${MEMBRANE_URI} /bin/membrane
 
 RUN chmod +x-rw /bin/membrane
 
-
 CMD [%s]
 ENTRYPOINT ["/bin/membrane"]
 `
@@ -74,6 +73,9 @@ ARG OTELCOL_CONFIG
 COPY ${OTELCOL_CONFIG} /etc/otelcol/config.yaml
 RUN chmod -R a+r /etc/otelcol
 
+ARG NITRIC_TRACE_SAMPLE_PERCENT
+ENV NITRIC_TRACE_SAMPLE_PERCENT ${NITRIC_TRACE_SAMPLE_PERCENT}
+
 CMD [%s]
 ENTRYPOINT ["/bin/membrane"]
 `
@@ -86,7 +88,13 @@ receivers:
 
 processors:
 
+extensions:{{range $val := .Extensions}}
+  {{$val}}:{{end}}
+
 service:
+  extensions:{{range $val := .Extensions}}
+  - {{$val}}:{{end}}
+
   pipelines:
     traces:
       receivers: [otlp]
@@ -97,9 +105,7 @@ service:
 
 exporters:
   {{ .TraceName }}: {{ .TraceExporterConfig }}
-  {{ if ne .MetricName .TraceName }}
-  {{ .MetricName }}: {{ .MetricExporterConfig }}
-  {{ end }}
+  {{ if ne .MetricName .TraceName }}{{ .MetricName }}: {{ .MetricExporterConfig }}{{ end }}
 `
 
 // CmdFromImage - Takes the existing Entrypoint and CMD from and image and makes it a new CMD to be wrapped by a new entrypoint
@@ -130,6 +136,7 @@ type otelConfig struct {
 	TraceName            string
 	MetricExporterConfig string
 	TraceExporterConfig  string
+	Extensions           []string
 }
 
 func telemetryConfig(provider string) (string, error) {
@@ -141,6 +148,7 @@ func telemetryConfig(provider string) (string, error) {
 		err := t.Execute(config, &otelConfig{
 			TraceName:  "awsxray",
 			MetricName: "awsemf",
+			Extensions: []string{},
 		})
 		if err != nil {
 			return "", err
@@ -151,6 +159,7 @@ func telemetryConfig(provider string) (string, error) {
 			TraceName:           "googlecloud",
 			MetricName:          "googlecloud",
 			TraceExporterConfig: `{"retry_on_failure": {"enabled": false}}`,
+			Extensions:          []string{},
 		})
 		if err != nil {
 			return "", err
@@ -179,7 +188,7 @@ type WrapperBuildArgsConfig struct {
 	Provider             string
 	MembraneVersion      string
 	OtelCollectorVersion string
-	Telemetry            bool
+	Telemetry            int
 }
 
 func WrapperBuildArgs(config *WrapperBuildArgsConfig) (*WrappedBuildInput, error) {
@@ -202,7 +211,7 @@ func WrapperBuildArgs(config *WrapperBuildArgsConfig) (*WrappedBuildInput, error
 		fetchFrom = fmt.Sprintf("%s?foo=%s", os.Getenv("TEST_MEMBRANE_URI"), membraneVersion)
 	}
 
-	if config.Telemetry {
+	if config.Telemetry > 0 {
 		tf, err := yamlConfigFile(config.ProjectDir, "otel-config")
 		if err != nil {
 			return nil, err
@@ -232,11 +241,12 @@ func WrapperBuildArgs(config *WrapperBuildArgsConfig) (*WrappedBuildInput, error
 		return &WrappedBuildInput{
 			Dockerfile: fmt.Sprintf(wrapperDockerFileWithOTel, strings.Join(cmd, ",")),
 			Args: map[string]string{
-				"MEMBRANE_URI":        fetchFrom,
-				"MEMBRANE_VERSION":    membraneVersion,
-				"BASE_IMAGE":          config.ImageName,
-				"OTELCOL_CONFIG":      relConfig,
-				"OTELCOL_CONTRIB_URI": otelCollectorVer,
+				"MEMBRANE_URI":                fetchFrom,
+				"MEMBRANE_VERSION":            membraneVersion,
+				"BASE_IMAGE":                  config.ImageName,
+				"OTELCOL_CONFIG":              relConfig,
+				"OTELCOL_CONTRIB_URI":         otelCollectorVer,
+				"NITRIC_TRACE_SAMPLE_PERCENT": fmt.Sprint(config.Telemetry),
 			},
 		}, nil
 	}

@@ -41,7 +41,11 @@ receivers:
 
 processors:
 
+extensions:
+
 service:
+  extensions:
+
   pipelines:
     traces:
       receivers: [otlp]
@@ -52,8 +56,35 @@ service:
 
 exporters:
   awsxray: 
-  
   awsemf: 
+`,
+		},
+		{
+			name:     "gcp",
+			provider: "gcp",
+			want: `
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+processors:
+
+extensions:
+
+service:
+  extensions:
+
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [googlecloud]
+    metrics:
+      receivers: [otlp]
+      exporters: [googlecloud]
+
+exporters:
+  googlecloud: {"retry_on_failure": {"enabled": false}}
   
 `,
 		},

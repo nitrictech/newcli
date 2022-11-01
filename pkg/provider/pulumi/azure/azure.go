@@ -44,9 +44,9 @@ import (
 )
 
 type azureFunctionConfig struct {
-	Memory    *int  `yaml:"memory,omitempty"`
-	Timeout   *int  `yaml:"timeout,omitempty"`
-	Telemetry *bool `yaml:"telemetry,omitempty"`
+	Memory    *int `yaml:"memory,omitempty"`
+	Timeout   *int `yaml:"timeout,omitempty"`
+	Telemetry *int `yaml:"telemetry,omitempty"`
 }
 
 type azureStackConfig struct {

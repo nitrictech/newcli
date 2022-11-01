@@ -51,8 +51,8 @@ type ComputeUnit struct {
 	// The max running time of the function: default 15
 	Timeout int `yaml:"timeout,omitempty"`
 
-	// Telemetry enabled
-	Telemetry bool `yaml:"telemetry,omitempty"`
+	// Telemetry sampling percentage
+	Telemetry int `yaml:"telemetry,omitempty"`
 }
 
 type Function struct {

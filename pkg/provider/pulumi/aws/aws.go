@@ -54,9 +54,9 @@ import (
 )
 
 type awsFunctionConfig struct {
-	Memory    *int  `yaml:"memory,omitempty"`
-	Timeout   *int  `yaml:"timeout,omitempty"`
-	Telemetry *bool `yaml:"telemetry,omitempty"`
+	Memory    *int `yaml:"memory,omitempty"`
+	Timeout   *int `yaml:"timeout,omitempty"`
+	Telemetry *int `yaml:"telemetry,omitempty"`
 }
 
 type awsStackConfig struct {
@@ -187,6 +187,10 @@ func (a *awsProvider) Validate() error {
 		if fc.Timeout != nil && *fc.Timeout < 15 {
 			errList.Push(fmt.Errorf("function config %s requires \"timeout\" to be greater than 15 seconds", fn))
 		}
+
+		if fc.Telemetry != nil && (*fc.Telemetry < 0 && *fc.Telemetry > 100) {
+			errList.Push(fmt.Errorf("function config %s requires \"telemetry\" to be between 0 and 100 (a percentage)", fn))
+		}
 	}
 
 	return errList.Err()
@@ -198,7 +202,7 @@ func (a *awsProvider) Configure(ctx context.Context, autoStack *auto.Stack) erro
 	for fn, f := range a.proj.Functions {
 		f.ComputeUnit.Memory = 512
 		f.ComputeUnit.Timeout = 15
-		f.ComputeUnit.Telemetry = false
+		f.ComputeUnit.Telemetry = 0
 
 		if dok {
 			if dc.Memory != nil {
