@@ -68,7 +68,7 @@ var runCmd = &cobra.Command{
 			cobra.CheckErr(err)
 		}
 
-		ls := run.NewLocalServices(proj)
+		ls := run.NewLocalServices(proj, nil)
 		if ls.Running() {
 			pterm.Error.Println("Only one instance of Nitric can be run locally at a time, please check that you have ended all other instances and try again")
 			os.Exit(2)
@@ -96,7 +96,7 @@ var runCmd = &cobra.Command{
 			StartMsg: "Starting local services",
 			Runner: func(progress output.Progress) error {
 				go func(errch chan error) {
-					errch <- ls.Start(pool)
+					errch <- ls.Start(pool, nil)
 				}(memerr)
 
 				for {
@@ -152,12 +152,12 @@ var runCmd = &cobra.Command{
 
 		lck := sync.Mutex{}
 		// React to worker pool state and update services table
-		pool.Listen(func(we run.WorkerEvent) {
+		pool.Listen(func(we *run.WorkerEvent) {
 			lck.Lock()
 			defer lck.Unlock()
 			// area.Clear()
 
-			stackState.UpdateFromWorkerEvent(we)
+			stackState.UpdateFromWorkerEvent(*we)
 			area.Update(stackState.Tables(9001))
 		})
 

@@ -30,7 +30,7 @@ type WorkerEvent struct {
 	Worker worker.Worker
 }
 
-type WorkerListener = func(WorkerEvent)
+type WorkerListener = func(*WorkerEvent)
 
 type RunProcessPool struct {
 	worker.WorkerPool
@@ -39,7 +39,7 @@ type RunProcessPool struct {
 
 func (r *RunProcessPool) notifyListeners(evt WorkerEvent) {
 	for _, l := range r.listeners {
-		l(evt)
+		l(&evt)
 	}
 }
 

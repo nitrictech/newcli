@@ -36,6 +36,41 @@ import (
 	"github.com/nitrictech/cli/pkg/tasklet"
 )
 
+// decorateStatus - return a stylized string for printing statuses
+func decorateStatus(status run.ServiceStatus, text string) string {
+	if status == run.Stopped {
+		return pterm.Red(fmt.Sprintf("🔴 %s", text))
+	} else if status == run.Started {
+		return pterm.Green(fmt.Sprintf("🟢 %s", text))
+	}
+	return pterm.Yellow(fmt.Sprintf("🟡 %s", text))
+}
+
+// serviceStatusTable - return a stylized table of all local service statuses
+func serviceStatusTable(status run.LocalServicesStatus) (string, int) {
+	statuses := []string{
+		decorateStatus(run.Started, "API Gateway"),
+		decorateStatus(status.StorageStatus, "Storage"),
+		decorateStatus(run.Started, "Queues"),
+		decorateStatus(run.Started, "Messages"),
+		decorateStatus(run.Started, "Collections"),
+		decorateStatus(run.Started, "Secrets"),
+	}
+
+	tableData := pterm.TableData{}
+	cols := 3
+	for i, j := 0, cols; i < len(statuses); i, j = i+cols, j+cols {
+		if j > len(statuses) {
+			j = len(statuses)
+		}
+
+		tableData = append(tableData, statuses[i:j])
+	}
+	str, _ := pterm.DefaultTable.WithData(tableData).Srender()
+
+	return str, len(tableData)
+}
+
 var startCmd = &cobra.Command{
 	Use:         "start",
 	Short:       "Run nitric services locally for development and testing",
@@ -50,63 +85,30 @@ var startCmd = &cobra.Command{
 		log.SetOutput(output.NewPtermWriter(pterm.Debug))
 		log.SetFlags(0)
 
-		ls := run.NewLocalServices(&project.Project{
-			Name: "local",
-		})
-		if ls.Running() {
-			pterm.Error.Println("Only one instance of Nitric can be run locally at a time, please check that you have ended all other instances and try again")
-			os.Exit(2)
-		}
-
-		memerr := make(chan error)
-		pool := run.NewRunProcessPool()
-
-		startLocalServices := tasklet.Runner{
-			StartMsg: "Starting Local Services",
-			Runner: func(progress output.Progress) error {
-				go func(errch chan error) {
-					errch <- ls.Start(pool)
-				}(memerr)
-
-				for {
-					select {
-					case err := <-memerr:
-						// catch any early errors from Start()
-						if err != nil {
-							return err
-						}
-					default:
-					}
-					if ls.Running() {
-						break
-					}
-					progress.Busyf("Waiting for Local Services to be ready")
-					time.Sleep(time.Second)
-				}
-				return nil
-			},
-			StopMsg: "Started Local Services!",
-		}
-		tasklet.MustRun(startLocalServices, tasklet.Opts{
-			Signal: term,
-		})
-
-		pterm.DefaultBasicText.Println("Local running, use ctrl-C to stop")
+		var servicesStatus = run.LocalServicesStatus{}
+		statusChannel := make(chan run.LocalServicesStatus)
 
 		stackState := run.NewStackState()
 
 		area, _ := pterm.DefaultArea.Start()
 		lck := sync.Mutex{}
-		// React to worker pool state and update services table
-		pool.Listen(func(we run.WorkerEvent) {
+		printStatus := func(we *run.WorkerEvent) {
 			lck.Lock()
 			defer lck.Unlock()
 			// area.Clear()
 
-			stackState.UpdateFromWorkerEvent(we)
+			if we != nil {
+				stackState.UpdateFromWorkerEvent(*we)
+			}
 
 			tables := []string{}
-			table, rows := stackState.ApiTable(9001)
+
+			table, rows := serviceStatusTable(servicesStatus)
+			if rows > 0 {
+				tables = append(tables, table)
+			}
+
+			table, rows = stackState.ApiTable(9001)
 			if rows > 0 {
 				tables = append(tables, table)
 			}
@@ -121,10 +123,63 @@ var startCmd = &cobra.Command{
 				tables = append(tables, table)
 			}
 			area.Update(strings.Join(tables, "\n\n"))
+		}
+
+		localServices := run.NewLocalServices(&project.Project{
+			Name: "local",
+		}, statusChannel)
+
+		if localServices.Running() {
+			pterm.Error.Println("Only one instance of Nitric can be run locally at a time, please check that you have ended all other instances and try again")
+			os.Exit(2)
+		}
+
+		memErr := make(chan error)
+		pool := run.NewRunProcessPool()
+
+		startLocalServices := tasklet.Runner{
+			StartMsg: "Local Services Initializing",
+			Runner: func(progress output.Progress) error {
+				go func(errChannel chan error) {
+					errChannel <- localServices.Start(pool, statusChannel)
+				}(memErr)
+
+				for {
+					select {
+					case err := <-memErr:
+						// catch any early errors from Start()
+						if err != nil {
+							return err
+						}
+					default:
+					}
+					if localServices.Running() {
+						break
+					}
+					progress.Busyf("Local Services Initializing")
+					time.Sleep(time.Second)
+				}
+				return nil
+			},
+			StopMsg: "Local Services Initialized",
+		}
+		tasklet.MustRun(startLocalServices, tasklet.Opts{
+			Signal: term,
 		})
 
+		pterm.DefaultBasicText.Println("Running, use ctrl-C to stop")
+		// Once the running message has printed, start printing local service status updates
+		go func() {
+			for {
+				servicesStatus = <-statusChannel
+				printStatus(nil)
+			}
+		}()
+		// React to worker pool state and update services table
+		pool.Listen(printStatus)
+
 		select {
-		case membraneError := <-memerr:
+		case membraneError := <-memErr:
 			fmt.Println(errors.WithMessage(membraneError, "membrane error, exiting"))
 		case <-term:
 			fmt.Println("Shutting down services - exiting")
@@ -132,7 +187,7 @@ var startCmd = &cobra.Command{
 
 		_ = area.Stop()
 		// Stop the membrane
-		cobra.CheckErr(ls.Stop())
+		cobra.CheckErr(localServices.Stop())
 	},
 	Args: cobra.ExactArgs(0),
 }

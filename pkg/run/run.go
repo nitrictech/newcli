@@ -34,29 +34,40 @@ import (
 )
 
 type LocalServices interface {
-	Start(pool worker.WorkerPool) error
+	Start(pool worker.WorkerPool, statusChannel chan LocalServicesStatus) error
 	Stop() error
 	Running() bool
 	Status() *LocalServicesStatus
 }
 
+type ServiceStatus int
+
+const (
+	Stopped ServiceStatus = iota
+	Started
+	Starting
+)
+
 type LocalServicesStatus struct {
-	RunDir          string `yaml:"runDir"`
-	GatewayAddress  string `yaml:"gatewayAddress"`
-	MembraneAddress string `yaml:"membraneAddress"`
-	StorageEndpoint string `yaml:"storageEndpoint"`
+	RunDir          string        `yaml:"runDir"`
+	GatewayAddress  string        `yaml:"gatewayAddress"`
+	MembraneAddress string        `yaml:"membraneAddress"`
+	StorageEndpoint string        `yaml:"storageEndpoint"`
+	StorageStatus   ServiceStatus `yaml:"storageStatus"`
 }
 
 type localServices struct {
-	s       *project.Project
-	storage *SeaweedServer
-	mem     *membrane.Membrane
-	status  *LocalServicesStatus
+	s             *project.Project
+	storage       *SeaweedServer
+	mem           *membrane.Membrane
+	status        *LocalServicesStatus
+	statusChannel chan LocalServicesStatus
 }
 
-func NewLocalServices(s *project.Project) LocalServices {
+func NewLocalServices(s *project.Project, statusChannel chan LocalServicesStatus) LocalServices {
 	return &localServices{
-		s: s,
+		s:             s,
+		statusChannel: statusChannel,
 		status: &LocalServicesStatus{
 			RunDir:          filepath.Join(utils.NitricRunDir(), s.Name),
 			GatewayAddress:  nitric_utils.GetEnv("GATEWAY_ADDRESS", ":9001"),
@@ -85,7 +96,7 @@ func (l *localServices) Status() *LocalServicesStatus {
 	return l.status
 }
 
-func (l *localServices) Start(pool worker.WorkerPool) error {
+func (l *localServices) Start(pool worker.WorkerPool, statusChannel chan LocalServicesStatus) error {
 	var err error
 
 	l.storage, err = NewSeaweed(l.status.RunDir)
@@ -99,7 +110,34 @@ func (l *localServices) Start(pool worker.WorkerPool) error {
 		return err
 	}
 
-	l.status.StorageEndpoint = fmt.Sprintf("http://localhost:%d", l.storage.GetApiPort())
+	go func() {
+		l.status.StorageStatus = Starting
+		if statusChannel != nil {
+			statusChannel <- *l.status
+		}
+	}()
+
+	storageAddr := fmt.Sprintf("localhost:%d", l.storage.GetApiPort())
+	l.status.StorageEndpoint = fmt.Sprintf("http://%s", storageAddr)
+
+	go func() {
+		var conn net.Conn = nil
+		for attempts := 0; conn == nil || attempts < 60; attempts++ {
+			conn, err = net.DialTimeout("tcp", storageAddr, time.Second)
+		}
+
+		if err != nil {
+			println(err.Error())
+			l.status.StorageStatus = Stopped
+		}
+		if conn != nil {
+			defer conn.Close()
+			l.status.StorageStatus = Started
+		}
+		if statusChannel != nil {
+			statusChannel <- *l.status
+		}
+	}()
 
 	sp, err := NewStorage(StorageOptions{
 		AccessKey: "dummykey",
