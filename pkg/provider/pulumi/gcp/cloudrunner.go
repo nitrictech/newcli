@@ -101,7 +101,7 @@ func (g *gcpProvider) newCloudRunner(ctx *pulumi.Context, name string, args *Clo
 	}
 
 	// Deploy the func
-	maxScale := common.IntValueOrDefault(args.Compute.Unit().MaxScale, 10)
+	maxScale := common.IntValueOrDefault(args.Compute.Unit().MaxScale, 100)
 	minScale := common.IntValueOrDefault(args.Compute.Unit().MinScale, 0)
 
 	res.Service, err = cloudrun.NewService(ctx, name, &cloudrun.ServiceArgs{
