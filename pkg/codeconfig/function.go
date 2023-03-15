@@ -22,14 +22,13 @@ import (
 	"sync"
 
 	"github.com/nitrictech/cli/pkg/utils"
-
-	pb "github.com/nitrictech/nitric/pkg/api/nitric/v1"
+	v1 "github.com/nitrictech/nitric/core/pkg/api/nitric/v1"
 )
 
 type Api struct {
-	securityDefinitions map[string]*pb.ApiSecurityDefinition
+	securityDefinitions map[string]*v1.ApiSecurityDefinition
 	security            map[string][]string
-	workers             []*pb.ApiWorker
+	workers             []*v1.ApiWorker
 	lock                sync.RWMutex
 }
 
@@ -39,8 +38,8 @@ func (a *Api) String() string {
 
 func newApi() *Api {
 	return &Api{
-		workers:             make([]*pb.ApiWorker, 0),
-		securityDefinitions: make(map[string]*pb.ApiSecurityDefinition),
+		workers:             make([]*v1.ApiWorker, 0),
+		securityDefinitions: make(map[string]*v1.ApiSecurityDefinition),
 		security:            make(map[string][]string),
 	}
 }
@@ -60,7 +59,7 @@ func normalizePath(path string) string {
 	return strings.Join(parts, "/")
 }
 
-func matchingWorkers(a *pb.ApiWorker, b *pb.ApiWorker) bool {
+func matchingWorkers(a *v1.ApiWorker, b *v1.ApiWorker) bool {
 	if normalizePath(a.GetPath()) == normalizePath(b.GetPath()) {
 		for _, aMethod := range a.GetMethods() {
 			for _, bMethod := range b.GetMethods() {
@@ -74,7 +73,7 @@ func matchingWorkers(a *pb.ApiWorker, b *pb.ApiWorker) bool {
 	return false
 }
 
-func (a *Api) AddWorker(worker *pb.ApiWorker) error {
+func (a *Api) AddWorker(worker *v1.ApiWorker) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -90,7 +89,7 @@ func (a *Api) AddWorker(worker *pb.ApiWorker) error {
 	return nil
 }
 
-func (a *Api) AddSecurityDefinition(name string, sd *pb.ApiSecurityDefinition) {
+func (a *Api) AddSecurityDefinition(name string, sd *v1.ApiSecurityDefinition) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -113,25 +112,25 @@ func (a *Api) AddSecurity(name string, scopes []string) {
 type FunctionDependencies struct {
 	name          string
 	apis          map[string]*Api
-	subscriptions map[string]*pb.SubscriptionWorker
-	schedules     map[string]*pb.ScheduleWorker
-	buckets       map[string]*pb.BucketResource
-	topics        map[string]*pb.TopicResource
-	collections   map[string]*pb.CollectionResource
-	queues        map[string]*pb.QueueResource
-	policies      []*pb.PolicyResource
-	secrets       map[string]*pb.SecretResource
+	subscriptions map[string]*v1.SubscriptionWorker
+	schedules     map[string]*v1.ScheduleWorker
+	buckets       map[string]*v1.BucketResource
+	topics        map[string]*v1.TopicResource
+	collections   map[string]*v1.CollectionResource
+	queues        map[string]*v1.QueueResource
+	policies      []*v1.PolicyResource
+	secrets       map[string]*v1.SecretResource
 	lock          sync.RWMutex
 }
 
 // AddPolicy - Adds an access policy dependency to the function
-func (a *FunctionDependencies) AddPolicy(p *pb.PolicyResource) {
+func (a *FunctionDependencies) AddPolicy(p *v1.PolicyResource) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	for _, p := range p.Principals {
 		// If provided a blank function principal assume its for this function
-		if p.Type == pb.ResourceType_Function && p.Name == "" {
+		if p.Type == v1.ResourceType_Function && p.Name == "" {
 			p.Name = a.name
 		}
 	}
@@ -139,7 +138,7 @@ func (a *FunctionDependencies) AddPolicy(p *pb.PolicyResource) {
 	a.policies = append(a.policies, p)
 }
 
-func (a *FunctionDependencies) AddApiSecurityDefinitions(name string, sds map[string]*pb.ApiSecurityDefinition) {
+func (a *FunctionDependencies) AddApiSecurityDefinitions(name string, sds map[string]*v1.ApiSecurityDefinition) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -152,7 +151,7 @@ func (a *FunctionDependencies) AddApiSecurityDefinitions(name string, sds map[st
 	}
 }
 
-func (a *FunctionDependencies) AddApiSecurity(name string, security map[string]*pb.ApiScopes) {
+func (a *FunctionDependencies) AddApiSecurity(name string, security map[string]*v1.ApiScopes) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -165,7 +164,7 @@ func (a *FunctionDependencies) AddApiSecurity(name string, security map[string]*
 	}
 }
 
-func (a *FunctionDependencies) AddApiHandler(aw *pb.ApiWorker) error {
+func (a *FunctionDependencies) AddApiHandler(aw *v1.ApiWorker) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -177,7 +176,7 @@ func (a *FunctionDependencies) AddApiHandler(aw *pb.ApiWorker) error {
 }
 
 // AddSubscriptionHandler - registers a handler in the function that subscribes to a topic of events
-func (a *FunctionDependencies) AddSubscriptionHandler(sw *pb.SubscriptionWorker) error {
+func (a *FunctionDependencies) AddSubscriptionHandler(sw *v1.SubscriptionWorker) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -206,7 +205,7 @@ func (a *FunctionDependencies) WorkerCount() int {
 }
 
 // AddScheduleHandler - registers a handler in the function that runs on a schedule
-func (a *FunctionDependencies) AddScheduleHandler(sw *pb.ScheduleWorker) error {
+func (a *FunctionDependencies) AddScheduleHandler(sw *v1.ScheduleWorker) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -220,14 +219,14 @@ func (a *FunctionDependencies) AddScheduleHandler(sw *pb.ScheduleWorker) error {
 }
 
 // AddBucket - adds a storage bucket dependency to the function
-func (a *FunctionDependencies) AddBucket(name string, b *pb.BucketResource) {
+func (a *FunctionDependencies) AddBucket(name string, b *v1.BucketResource) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	a.buckets[name] = b
 }
 
 // AddTopic - adds a pub/sub topic dependency to the function
-func (a *FunctionDependencies) AddTopic(name string, t *pb.TopicResource) {
+func (a *FunctionDependencies) AddTopic(name string, t *v1.TopicResource) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -235,7 +234,7 @@ func (a *FunctionDependencies) AddTopic(name string, t *pb.TopicResource) {
 }
 
 // AddCollection - adds a document database collection dependency to the function
-func (a *FunctionDependencies) AddCollection(name string, c *pb.CollectionResource) {
+func (a *FunctionDependencies) AddCollection(name string, c *v1.CollectionResource) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -243,14 +242,14 @@ func (a *FunctionDependencies) AddCollection(name string, c *pb.CollectionResour
 }
 
 // AddQueue - adds a queue dependency to the function
-func (a *FunctionDependencies) AddQueue(name string, q *pb.QueueResource) {
+func (a *FunctionDependencies) AddQueue(name string, q *v1.QueueResource) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	a.queues[name] = q
 }
 
-func (a *FunctionDependencies) AddSecret(name string, s *pb.SecretResource) {
+func (a *FunctionDependencies) AddSecret(name string, s *v1.SecretResource) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -262,13 +261,13 @@ func NewFunction(name string) *FunctionDependencies {
 	return &FunctionDependencies{
 		name:          name,
 		apis:          make(map[string]*Api),
-		subscriptions: make(map[string]*pb.SubscriptionWorker),
-		schedules:     make(map[string]*pb.ScheduleWorker),
-		buckets:       make(map[string]*pb.BucketResource),
-		topics:        make(map[string]*pb.TopicResource),
-		collections:   make(map[string]*pb.CollectionResource),
-		queues:        make(map[string]*pb.QueueResource),
-		secrets:       make(map[string]*pb.SecretResource),
-		policies:      make([]*pb.PolicyResource, 0),
+		subscriptions: make(map[string]*v1.SubscriptionWorker),
+		schedules:     make(map[string]*v1.ScheduleWorker),
+		buckets:       make(map[string]*v1.BucketResource),
+		topics:        make(map[string]*v1.TopicResource),
+		collections:   make(map[string]*v1.CollectionResource),
+		queues:        make(map[string]*v1.QueueResource),
+		secrets:       make(map[string]*v1.SecretResource),
+		policies:      make([]*v1.PolicyResource, 0),
 	}
 }

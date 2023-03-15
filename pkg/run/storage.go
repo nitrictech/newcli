@@ -32,8 +32,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	"github.com/nitrictech/nitric/pkg/plugins/storage"
-	s3_service "github.com/nitrictech/nitric/pkg/plugins/storage/s3"
+	s3_service "github.com/nitrictech/nitric/cloud/aws/runtime/storage"
+	"github.com/nitrictech/nitric/core/pkg/plugins/storage"
 )
 
 type RunStorageService struct {

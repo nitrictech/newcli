@@ -37,7 +37,7 @@ func TestFindFilesInDir(t *testing.T) {
 		{
 			dir:  "../../",
 			name: "generator.go",
-			want: []string{"pkg/provider/generator.go", "pkg/provider/pulumi/generator.go"},
+			want: []string{"pkg/provider/generator.go"},
 		},
 	}
 

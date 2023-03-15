@@ -17,19 +17,30 @@
 package provider
 
 import (
+	_ "embed"
 	"fmt"
 
-	"github.com/nitrictech/cli/pkg/project"
-	"github.com/nitrictech/cli/pkg/provider/pulumi"
+	"github.com/nitrictech/cli/pkg/provider/remote"
 	"github.com/nitrictech/cli/pkg/provider/types"
-	"github.com/nitrictech/cli/pkg/utils"
 )
 
-func NewProvider(p *project.Project, name, provider string, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
+//go:embed nitric-version.txt
+var knownlatestversion string
+
+func ProviderFromFile(cfc types.ConfigFromCode, name, provider string, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
 	switch provider {
-	case types.Aws, types.Azure, types.Digitalocean, types.Gcp:
-		return pulumi.New(p, name, provider, envMap, opts)
+	case types.Aws, types.Azure, types.Gcp:
+		return remote.FromFile(cfc, name, fmt.Sprintf("nitric/%s@%s", provider, knownlatestversion), envMap, opts)
 	default:
-		return nil, utils.NewNotSupportedErr(fmt.Sprintf("provider %s is not supported", provider))
+		return remote.FromFile(cfc, name, provider, envMap, opts)
+	}
+}
+
+func NewProvider(cfc types.ConfigFromCode, name, provider string, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
+	switch provider {
+	case types.Aws, types.Azure, types.Gcp:
+		return remote.New(cfc, name, fmt.Sprintf("nitric/%s@%s", provider, knownlatestversion), envMap, opts)
+	default:
+		return remote.New(cfc, name, provider, envMap, opts)
 	}
 }

@@ -14,27 +14,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package azure
+package remote
 
 import (
-	"testing"
+	"os"
 
-	"github.com/hashicorp/go-version"
-	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v2"
 )
 
-func Test_azureProvider_Plugins(t *testing.T) {
-	want := []string{"azure-native", "azure", "azuread"}
-	got := (&azureProvider{}).Plugins()
+type StackConfig struct {
+	Name     string         `yaml:"name"`
+	Provider string         `yaml:"provider"`
+	Props    map[string]any `yaml:",inline"`
+}
 
-	for _, pl := range got {
-		_, err := version.NewVersion(pl.Version)
-		if err != nil {
-			t.Error(err)
-		}
+func StackConfigFromFile(file string) (*StackConfig, error) {
+	cfg := &StackConfig{}
 
-		if !slices.Contains(want, pl.Name) {
-			t.Errorf("azureProvider.Plugins() = %v not in want %v", pl, want)
-		}
+	// Hydrate from file if already exists
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
 	}
+
+	err = yaml.Unmarshal(b, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }

@@ -53,6 +53,11 @@ func NitricHomeDir() string {
 	return filepath.Join(dirname, ".nitric")
 }
 
+// NitricProviderDir returns the directory to place provider deployment binaries.
+func NitricProviderDir() string {
+	return filepath.Join(NitricHomeDir(), "providers")
+}
+
 // NitricRunDir returns the directory to place runtime data.
 func NitricRunDir() string {
 	return filepath.Join(NitricHomeDir(), "run")

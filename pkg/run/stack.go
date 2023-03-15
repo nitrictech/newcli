@@ -22,7 +22,8 @@ import (
 
 	"github.com/pterm/pterm"
 
-	"github.com/nitrictech/nitric/pkg/worker"
+	"github.com/nitrictech/nitric/core/pkg/worker"
+	"github.com/nitrictech/nitric/core/pkg/worker/pool"
 )
 
 type RunStackState struct {
@@ -31,7 +32,7 @@ type RunStackState struct {
 	schedules map[string]string
 }
 
-func (r *RunStackState) Update(pool worker.WorkerPool, ls LocalServices) {
+func (r *RunStackState) Update(pool pool.WorkerPool, ls LocalServices) {
 	// reset state maps
 	r.apis = make(map[string]string)
 	r.subs = make(map[string]string)
@@ -42,7 +43,7 @@ func (r *RunStackState) Update(pool worker.WorkerPool, ls LocalServices) {
 	}
 
 	// TODO: We can probably move this directly into local service state
-	for _, wrkr := range pool.GetWorkers(&worker.GetWorkerOptions{}) {
+	for _, wrkr := range pool.GetWorkers(nil) {
 		switch w := wrkr.(type) {
 		case *worker.SubscriptionWorker:
 			r.subs[w.Topic()] = fmt.Sprintf("http://%s/topic/%s", ls.TriggerAddress(), w.Topic())

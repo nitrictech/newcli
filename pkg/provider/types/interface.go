@@ -18,16 +18,17 @@ package types
 
 import (
 	"github.com/nitrictech/cli/pkg/output"
+	"github.com/nitrictech/cli/pkg/project"
+	deploy "github.com/nitrictech/nitric/core/pkg/api/nitric/deploy/v1"
 )
 
 const (
-	Aws          = "aws"
-	Azure        = "azure"
-	Gcp          = "gcp"
-	Digitalocean = "digitalocean"
+	Aws   = "aws"
+	Azure = "azure"
+	Gcp   = "gcp"
 )
 
-var Providers = []string{Aws, Azure, Gcp, Digitalocean}
+var Providers = []string{Aws, Azure, Gcp}
 
 type ResourceState struct {
 	OpType   string
@@ -55,4 +56,11 @@ type Provider interface {
 	AskAndSave() error
 	SupportedRegions() []string
 	// Status()
+}
+
+type ConfigFromCode interface {
+	ProjectDir() string
+	ProjectName() string
+	ToProject() (*project.Project, error)
+	ToUpRequest() (*deploy.DeployUpRequest, error)
 }

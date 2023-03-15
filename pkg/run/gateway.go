@@ -27,12 +27,14 @@ import (
 	"github.com/valyala/fasthttp"
 
 	"github.com/nitrictech/cli/pkg/utils"
-	"github.com/nitrictech/nitric/pkg/plugins/gateway"
-	"github.com/nitrictech/nitric/pkg/triggers"
-	"github.com/nitrictech/nitric/pkg/worker"
+	base_http "github.com/nitrictech/nitric/cloud/common/runtime/gateway"
+	v1 "github.com/nitrictech/nitric/core/pkg/api/nitric/v1"
+	"github.com/nitrictech/nitric/core/pkg/plugins/gateway"
+	"github.com/nitrictech/nitric/core/pkg/worker"
+	"github.com/nitrictech/nitric/core/pkg/worker/pool"
 )
 
-type HttpMiddleware func(*fasthttp.RequestCtx, worker.WorkerPool) bool
+type HttpMiddleware func(*fasthttp.RequestCtx, pool.WorkerPool) bool
 
 type apiServer struct {
 	lis net.Listener
@@ -47,7 +49,7 @@ type BaseHttpGateway struct {
 	serviceListener net.Listener
 	gateway.UnimplementedGatewayPlugin
 	stop chan bool
-	pool worker.WorkerPool
+	pool pool.WorkerPool
 }
 
 var _ gateway.GatewayService = &BaseHttpGateway{}
@@ -87,43 +89,86 @@ func (s *BaseHttpGateway) GetApiAddresses() map[string]string {
 
 func (s *BaseHttpGateway) api(apiName string) func(ctx *fasthttp.RequestCtx) {
 	return func(ctx *fasthttp.RequestCtx) {
-		httpReq := triggers.FromHttpRequest(ctx)
+		headerMap := base_http.HttpHeadersToMap(&ctx.Request.Header)
 
-		worker, err := s.pool.GetWorker(&worker.GetWorkerOptions{
-			Http:   httpReq,
-			Filter: apiWorkerFilter(apiName),
+		headers := map[string]*v1.HeaderValue{}
+		for k, v := range headerMap {
+			headers[k] = &v1.HeaderValue{Value: v}
+		}
+
+		query := map[string]*v1.QueryValue{}
+
+		ctx.QueryArgs().VisitAll(func(key []byte, val []byte) {
+			k := string(key)
+
+			if query[k] == nil {
+				query[k] = &v1.QueryValue{}
+			}
+
+			query[k].Value = append(query[k].Value, string(val))
+		})
+
+		httpTrigger := &v1.TriggerRequest{
+			Data: ctx.Request.Body(),
+			Context: &v1.TriggerRequest_Http{
+				Http: &v1.HttpTriggerContext{
+					Method:      string(ctx.Request.Header.Method()),
+					Path:        string(ctx.URI().PathOriginal()),
+					Headers:     headers,
+					QueryParams: query,
+				},
+			},
+		}
+
+		worker, err := s.pool.GetWorker(&pool.GetWorkerOptions{
+			Trigger: httpTrigger,
+			Filter:  apiWorkerFilter(apiName),
 		})
 		if err != nil {
 			ctx.Error("No workers found for provided API route", 404)
 			return
 		}
 
-		resp, err := worker.HandleHttpRequest(context.TODO(), httpReq)
+		resp, err := worker.HandleTrigger(context.TODO(), httpTrigger)
 		if err != nil {
 			ctx.Error(fmt.Sprintf("Error handling HTTP Request: %v", err), 500)
 			return
 		}
 
-		if resp.Header != nil {
-			resp.Header.CopyTo(&ctx.Response.Header)
+		if http := resp.GetHttp(); http != nil {
+			// Copy headers across
+			for k, v := range http.Headers {
+				for _, val := range v.Value {
+					ctx.Response.Header.Add(k, val)
+				}
+			}
+
+			// Avoid content length header duplication
+			ctx.Response.Header.Del("Content-Length")
+			ctx.Response.SetStatusCode(int(http.Status))
+			ctx.Response.SetBody(resp.Data)
+
+			return
 		}
 
-		ctx.Response.SetBody(resp.Body)
-		ctx.Response.SetStatusCode(resp.StatusCode)
+		ctx.Error("Response was not a Http response", 500)
 	}
 }
 
 func (s *BaseHttpGateway) topic(ctx *fasthttp.RequestCtx) {
 	topicName := ctx.UserValue("name").(string)
 
-	evt := &triggers.Event{
-		ID:      "test",
-		Topic:   topicName,
-		Payload: ctx.Request.Body(),
+	trigger := &v1.TriggerRequest{
+		Data: ctx.Request.Body(),
+		Context: &v1.TriggerRequest_Topic{
+			Topic: &v1.TopicTriggerContext{
+				Topic: topicName,
+			},
+		},
 	}
 
-	ws := s.pool.GetWorkers(&worker.GetWorkerOptions{
-		Event: evt,
+	ws := s.pool.GetWorkers(&pool.GetWorkerOptions{
+		Trigger: trigger,
 	})
 
 	if len(ws) == 0 {
@@ -133,7 +178,7 @@ func (s *BaseHttpGateway) topic(ctx *fasthttp.RequestCtx) {
 	errList := make([]error, 0)
 
 	for _, w := range ws {
-		if err := w.HandleEvent(context.TODO(), evt); err != nil {
+		if _, err := w.HandleTrigger(context.TODO(), trigger); err != nil {
 			errList = append(errList, err)
 		}
 	}
@@ -153,7 +198,7 @@ func (s *BaseHttpGateway) Refresh() error {
 		srv.workerCount = 0
 	}
 
-	for _, w := range s.pool.GetWorkers(&worker.GetWorkerOptions{}) {
+	for _, w := range s.pool.GetWorkers(&pool.GetWorkerOptions{}) {
 		if api, ok := w.(*worker.RouteWorker); ok {
 			currApi, ok := s.apiServer[api.Api()]
 
@@ -203,7 +248,7 @@ func (s *BaseHttpGateway) Refresh() error {
 	return nil
 }
 
-func (s *BaseHttpGateway) Start(pool worker.WorkerPool) error {
+func (s *BaseHttpGateway) Start(pool pool.WorkerPool) error {
 	var err error
 	// Assign the pool and block
 	s.pool = pool

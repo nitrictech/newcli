@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nitrictech/nitric/pkg/providers/common"
+	"github.com/nitrictech/nitric/core/pkg/providers/common"
 )
 
 type RunResourcesService struct {

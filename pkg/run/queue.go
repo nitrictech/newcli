@@ -29,10 +29,10 @@ import (
 	"github.com/google/uuid"
 	"go.etcd.io/bbolt"
 
-	"github.com/nitrictech/nitric/pkg/plugins/errors"
-	"github.com/nitrictech/nitric/pkg/plugins/errors/codes"
-	"github.com/nitrictech/nitric/pkg/plugins/queue"
-	"github.com/nitrictech/nitric/pkg/utils"
+	"github.com/nitrictech/nitric/core/pkg/plugins/errors"
+	"github.com/nitrictech/nitric/core/pkg/plugins/errors/codes"
+	"github.com/nitrictech/nitric/core/pkg/plugins/queue"
+	"github.com/nitrictech/nitric/core/pkg/utils"
 )
 
 const DEV_SUB_DIR_QUEUES = "./queues/"

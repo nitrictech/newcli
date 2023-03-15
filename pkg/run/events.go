@@ -22,28 +22,36 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nitrictech/nitric/pkg/plugins/errors"
-	"github.com/nitrictech/nitric/pkg/plugins/errors/codes"
-	"github.com/nitrictech/nitric/pkg/plugins/events"
-	"github.com/nitrictech/nitric/pkg/triggers"
-	"github.com/nitrictech/nitric/pkg/worker"
+	v1 "github.com/nitrictech/nitric/core/pkg/api/nitric/v1"
+	"github.com/nitrictech/nitric/core/pkg/plugins/errors"
+	"github.com/nitrictech/nitric/core/pkg/plugins/errors/codes"
+	"github.com/nitrictech/nitric/core/pkg/plugins/events"
+	"github.com/nitrictech/nitric/core/pkg/worker"
+	"github.com/nitrictech/nitric/core/pkg/worker/pool"
 )
 
 type WorkerPoolEventService struct {
 	events.UnimplementedeventsPlugin
-	pool worker.WorkerPool
+	pool pool.WorkerPool
 }
 
-func (s *WorkerPoolEventService) deliverEvent(ctx context.Context, evt *triggers.Event) {
-	targets := s.pool.GetWorkers(&worker.GetWorkerOptions{
-		Event: evt,
+func (s *WorkerPoolEventService) deliverEvent(ctx context.Context, evt *v1.TriggerRequest) {
+	topic := evt.GetTopic()
+	if topic == nil {
+		fmt.Printf("Cannot deliver trigger as it is not an event\n")
+		// Just return
+		return
+	}
+
+	targets := s.pool.GetWorkers(&pool.GetWorkerOptions{
+		Trigger: evt,
 	})
 
-	fmt.Printf("Publishing to %s topic, %d subscriber(s)\n", evt.Topic, len(targets))
+	fmt.Printf("Publishing to %s topic, %d subscriber(s)\n", topic.Topic, len(targets))
 
 	for _, target := range targets {
 		go func(target worker.Worker) {
-			err := target.HandleEvent(ctx, evt)
+			_, err := target.HandleTrigger(ctx, evt)
 			if err != nil {
 				// this is likely an error in the user's handler, we don't want it to bring the server down.
 				// just log and move on.
@@ -63,11 +71,7 @@ func (s *WorkerPoolEventService) Publish(ctx context.Context, topic string, dela
 		},
 	)
 
-	requestId := event.ID
-	// payloadType := event.PayloadType
-	payload := event.Payload
-
-	marshaledPayload, err := json.Marshal(payload)
+	marshaledPayload, err := json.Marshal(event)
 	if err != nil {
 		return newErr(
 			codes.Internal,
@@ -76,27 +80,30 @@ func (s *WorkerPoolEventService) Publish(ctx context.Context, topic string, dela
 		)
 	}
 
-	evt := &triggers.Event{
-		ID:      requestId,
-		Topic:   topic,
-		Payload: marshaledPayload,
+	trigger := &v1.TriggerRequest{
+		Data: marshaledPayload,
+		Context: &v1.TriggerRequest_Topic{
+			Topic: &v1.TopicTriggerContext{
+				Topic: topic,
+			},
+		},
 	}
 
 	if delay > 0 {
-		go func(evt *triggers.Event) {
+		go func(evt *v1.TriggerRequest) {
 			// Wait to deliver the events
 			time.Sleep(time.Duration(delay) * time.Second)
 			s.deliverEvent(ctx, evt)
-		}(evt)
+		}(trigger)
 	} else {
-		s.deliverEvent(ctx, evt)
+		s.deliverEvent(ctx, trigger)
 	}
 
 	return nil
 }
 
 // Create new Dev EventService
-func NewEvents(pool worker.WorkerPool) (events.EventService, error) {
+func NewEvents(pool pool.WorkerPool) (events.EventService, error) {
 	return &WorkerPoolEventService{
 		pool: pool,
 	}, nil

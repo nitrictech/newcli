@@ -25,12 +25,12 @@ import (
 
 	"github.com/nitrictech/cli/pkg/project"
 	"github.com/nitrictech/cli/pkg/utils"
-	"github.com/nitrictech/nitric/pkg/membrane"
-	"github.com/nitrictech/nitric/pkg/worker"
+	"github.com/nitrictech/nitric/core/pkg/membrane"
+	"github.com/nitrictech/nitric/core/pkg/worker/pool"
 )
 
 type LocalServices interface {
-	Start(pool worker.WorkerPool) error
+	Start(pool pool.WorkerPool) error
 	Stop() error
 	Running() bool
 	Status() *LocalServicesStatus
@@ -110,7 +110,7 @@ func (l *localServices) Status() *LocalServicesStatus {
 	return l.status
 }
 
-func (l *localServices) Start(pool worker.WorkerPool) error {
+func (l *localServices) Start(pool pool.WorkerPool) error {
 	var err error
 
 	l.storage, err = NewSeaweed(l.status.RunDir)

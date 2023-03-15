@@ -6,6 +6,8 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/Azure/azure-sdk-for-go v67.2.0+incompatible
 	github.com/Azure/go-autorest/autorest/to v0.4.0
+	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
+	github.com/asdine/storm v2.1.2+incompatible
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.44.175
 	github.com/aws/aws-sdk-go-v2 v1.17.3
@@ -17,7 +19,7 @@ require (
 	github.com/docker/docker v20.10.22+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/fasthttp/router v1.4.14
-	github.com/getkin/kin-openapi v0.112.0
+	github.com/getkin/kin-openapi v0.113.0
 	github.com/golang/mock v1.6.0
 	github.com/golangci/golangci-lint v1.51.2
 	github.com/google/go-cmp v0.5.9
@@ -31,7 +33,8 @@ require (
 	github.com/missionMeteora/toolkit v0.0.0-20170713173850-88364e3ef8cc
 	github.com/moby/moby v20.10.22+incompatible
 	github.com/nitrictech/go-mods-direct v0.0.0-20221212215233-12bba0c74a7f
-	github.com/nitrictech/nitric v0.21.0
+	github.com/nitrictech/nitric/cloud/aws v0.0.0-20230213031554-d8ff7f3013b8
+	github.com/nitrictech/nitric/core v0.0.0-20230301234157-bc8d79c58813
 	github.com/nitrictech/pulumi-docker-buildkit/sdk/v0.1.21/dockerbuildkit v0.0.0-20221128004642-afea0486c727
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.53
@@ -40,7 +43,7 @@ require (
 	github.com/pulumi/pulumi-azuread/sdk/v5 v5.32.0
 	github.com/pulumi/pulumi-gcp/sdk/v6 v6.45.0
 	github.com/pulumi/pulumi-random/sdk/v4 v4.8.2
-	github.com/pulumi/pulumi/sdk/v3 v3.51.0
+	github.com/pulumi/pulumi/sdk/v3 v3.52.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/segmentio/encoding v0.3.6
 	github.com/spf13/cobra v1.6.1
@@ -49,14 +52,13 @@ require (
 	golang.org/x/exp v0.0.0-20230108222341-4b8118a2686a
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/oauth2 v0.4.0
-	google.golang.org/grpc v1.51.0
+	google.golang.org/grpc v1.52.0
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
-	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
-	github.com/asdine/storm v2.1.2+incompatible
+	github.com/nitrictech/nitric/cloud/common v0.0.0-20230213031554-d8ff7f3013b8
 	github.com/pulumi/pulumi-azure-native-sdk/apimanagement v1.90.0
 	github.com/pulumi/pulumi-azure-native-sdk/app v1.90.0
 	github.com/pulumi/pulumi-azure-native-sdk/authorization v1.90.0
@@ -97,14 +99,15 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
+	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/Djarvur/go-err113 v0.1.0 // indirect
 	github.com/GaijinEntertainment/go-exhaustruct/v2 v2.3.0 // indirect
-	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/Jille/raft-grpc-transport v1.3.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/OpenPeeDeeP/depguard v1.1.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4 // indirect
+	github.com/Sereal/Sereal v0.0.0-20221130110801-16a4f76670cd // indirect
 	github.com/Shopify/sarama v1.37.2 // indirect
 	github.com/acomagu/bufpipe v1.0.3 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
@@ -334,6 +337,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
+	github.com/perimeterx/marshmallow v1.1.4 // indirect
 	github.com/peterh/liner v1.2.2 // indirect
 	github.com/philhofer/fwd v1.1.2-0.20210722190033-5c56ac6d0bb9 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
@@ -422,6 +426,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/viant/ptrie v0.3.0 // indirect
 	github.com/viant/toolbox v0.33.2 // indirect
+	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect

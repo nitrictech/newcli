@@ -21,8 +21,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/nitrictech/nitric/pkg/utils"
-	"github.com/nitrictech/nitric/pkg/worker"
+	"github.com/nitrictech/nitric/core/pkg/utils"
+	"github.com/nitrictech/nitric/core/pkg/worker"
+	"github.com/nitrictech/nitric/core/pkg/worker/pool"
 )
 
 type WorkerEventType string
@@ -40,7 +41,7 @@ type WorkerEvent struct {
 type WorkerListener = func(WorkerEvent)
 
 type RunProcessPool struct {
-	worker.WorkerPool
+	pool.WorkerPool
 	listeners []WorkerListener
 }
 
@@ -88,7 +89,7 @@ func NewRunProcessPool() *RunProcessPool {
 
 	return &RunProcessPool{
 		listeners: make([]WorkerListener, 0),
-		WorkerPool: worker.NewProcessPool(&worker.ProcessPoolOptions{
+		WorkerPool: pool.NewProcessPool(&pool.ProcessPoolOptions{
 			MinWorkers: 0,
 			MaxWorkers: maxWorkers,
 		}),
