@@ -64,12 +64,15 @@ func getProviderParts(fullProvider string) (*provider, error) {
 // Use providers with a convention of <org-name>/<provider-name>
 var defaultNitricOrg = "nitric"
 
-func FromFile(cfc types.ConfigFromCode, name, stack string, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
+func FromFile(cfc types.ConfigFromCode, name, provider string, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
 	// Read the stack file
 	sc, err := StackConfigFromFile(path.Join(cfc.ProjectDir(), fmt.Sprintf("nitric-%s.yaml", name)))
 	if err != nil {
 		return nil, err
 	}
+
+	// set provider for backward compat
+	sc.Provider = provider
 
 	// Get the providers name and determine the type of deployment
 	prov, err := getProviderParts(sc.Provider)
