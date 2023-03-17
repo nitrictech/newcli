@@ -74,13 +74,25 @@ func (p *binaryRemoteDeployment) Down(log output.Progress) (*types.Summary, erro
 }
 
 func isExecAny(mode os.FileMode) bool {
-	return mode&0o111 != 0
+	os := runtime.GOOS
+
+	// could check ext in future for windows
+	if os == "windows" {
+		return mode.IsRegular()
+	}
+
+	return mode.IsRegular() && (mode.Perm()&0o111) != 0
 }
 
 func providerFilePath(prov *provider) string {
 	provDir := utils.NitricProviderDir()
+	os := runtime.GOOS
 
-	return path.Join(provDir, prov.org, fmt.Sprintf("%s-%s", prov.name, prov.version))
+	if os == "windows" {
+		return filepath.Join(provDir, prov.org, fmt.Sprintf("%s-%s%s", prov.name, prov.version, ".exe"))
+	}
+
+	return filepath.Join(provDir, prov.org, fmt.Sprintf("%s-%s", prov.name, prov.version))
 }
 
 func NewBinaryRemoteDeployment(cfc types.ConfigFromCode, sc *StackConfig, prov *provider, envMap map[string]string, opts *types.ProviderOpts) (*binaryRemoteDeployment, error) {
