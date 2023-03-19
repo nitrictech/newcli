@@ -19,10 +19,13 @@ package remote
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/hashicorp/go-getter"
+	"github.com/pterm/pterm"
 
 	"github.com/nitrictech/cli/pkg/provider/types"
 )
@@ -80,6 +83,38 @@ func checkProvider(prov *provider) (string, error) {
 	return provFile, nil
 }
 
+func checkPulumiLoginState() (bool, error) {
+	cmd := exec.Command("pulumi", "whoami")
+	_, err := cmd.Output()
+	// if no pulumi login state detected
+	if err != nil {
+		var confirm string
+
+		pterm.Warning.Print("No pulumi config detected")
+		fmt.Println("")
+		pterm.Info.Printf("For production deployments, see docs %s", "https://nitric.io/docs/deployment#self-hosting")
+		fmt.Println("")
+
+		err := survey.AskOne(&survey.Select{
+			Message: "Would you like us to automatically configure pulumi for testing purposes?",
+			Default: "No",
+			Options: []string{"Yes", "No"},
+		}, &confirm)
+		if err != nil {
+			return false, err
+		}
+
+		if confirm != "Yes" {
+			pterm.Info.Println("Cancelling command")
+			os.Exit(0)
+		}
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func NewNitricDeployment(cfc types.ConfigFromCode, sc *StackConfig, prov *provider, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
 	// Check and validate that the nitric provider exists before creating a new binary provider
 	// This will also attempt to automatically retrieve the provider if it doesn't already exist
@@ -88,9 +123,19 @@ func NewNitricDeployment(cfc types.ConfigFromCode, sc *StackConfig, prov *provid
 		return nil, err
 	}
 
+	// check that a pulumi config exists, if not prompt with auto-config question and doc link
+	autoPulumiLogin, err := checkPulumiLoginState()
+	if err != nil {
+		return nil, err
+	}
+
 	baseBinaryDeployment, err := NewBinaryRemoteDeployment(cfc, sc, prov, envMap, opts)
 	if err != nil {
 		return nil, err
+	}
+
+	if autoPulumiLogin {
+		baseBinaryDeployment.SetEnv("PULUMI_BACKEND_URL", "file://~")
 	}
 
 	baseNitricDeployment := &nitricDeployment{binaryRemoteDeployment: baseBinaryDeployment}

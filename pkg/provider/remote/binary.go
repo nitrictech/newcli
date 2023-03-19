@@ -20,7 +20,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
+	"runtime"
 
 	"github.com/pterm/pterm"
 
@@ -32,11 +33,22 @@ import (
 // Provides a binary remote provider type
 type binaryRemoteDeployment struct {
 	providerPath string
+	envMap       map[string]string
 	*remoteDeployment
 }
 
 func (p *binaryRemoteDeployment) startProcess() (*os.Process, error) {
 	cmd := exec.Command(p.providerPath)
+
+	if len(p.envMap) > 0 {
+		env := os.Environ()
+
+		for k, v := range p.envMap {
+			env = append(env, k+"="+v)
+		}
+
+		cmd.Env = env
+	}
 
 	cmd.Stderr = output.NewPtermWriter(pterm.Debug)
 	cmd.Stdout = output.NewPtermWriter(pterm.Debug)
@@ -93,6 +105,14 @@ func providerFilePath(prov *provider) string {
 	}
 
 	return filepath.Join(provDir, prov.org, fmt.Sprintf("%s-%s", prov.name, prov.version))
+}
+
+func (p *binaryRemoteDeployment) SetEnv(key, value string) {
+	if p.envMap == nil {
+		p.envMap = map[string]string{}
+	}
+
+	p.envMap[key] = value
 }
 
 func NewBinaryRemoteDeployment(cfc types.ConfigFromCode, sc *StackConfig, prov *provider, envMap map[string]string, opts *types.ProviderOpts) (*binaryRemoteDeployment, error) {
