@@ -31,7 +31,6 @@ build: generate
 generate:
 	@go run github.com/golang/mock/mockgen github.com/nitrictech/cli/pkg/containerengine ContainerEngine > mocks/mock_containerengine/mock_containerengine.go
 	@go run github.com/golang/mock/mockgen github.com/nitrictech/cli/pkg/utils GetterClient > mocks/mock_utils/mock_getter.go
-	@go run github.com/golang/mock/mockgen github.com/aws/aws-sdk-go/service/lambda/lambdaiface LambdaAPI > mocks/mock_lambda/mock_lambda.go
 	@echo SKIP go run ./hack/modversion "github.com/nitrictech/nitric/cloud" \> pkg/project/membraneversion.txt
 	@go run ./hack/readmegen/ README.md
 
