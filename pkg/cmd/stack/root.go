@@ -347,7 +347,7 @@ func newStack(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cc, err := codeconfig.New(project.New(pc), map[string]string{})
+	cc, err := codeconfig.New(project.New(pc.BaseConfig), map[string]string{})
 	cobra.CheckErr(err)
 
 	prov, err := provider.NewProvider(cc, name, pName, map[string]string{}, &types.ProviderOpts{})

@@ -155,9 +155,11 @@ nitric new hello-world "official/TypeScript - Starter" `,
 			cobra.CheckErr(err)
 
 			p = &project.Config{
-				Dir:      path.Join(cd, answers.ProjectName),
-				Name:     answers.ProjectName,
-				Handlers: []string{globA.Handlers},
+				BaseConfig: &project.BaseConfig{
+					Dir:      path.Join(cd, answers.ProjectName),
+					Name:     answers.ProjectName,
+					Handlers: []any{globA.Handlers},
+				},
 			}
 		} else {
 			// Load and update the project name in the template's nitric.yaml

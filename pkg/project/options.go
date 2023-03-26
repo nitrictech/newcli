@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pterm/pterm"
 
@@ -31,13 +30,13 @@ import (
 var stackPath string
 
 func FromConfig(c *Config) (*Project, error) {
-	p := New(c)
+	p := New(c.BaseConfig)
 
-	for _, h := range c.Handlers {
-		maybeFile := filepath.Join(p.Dir, h)
+	for _, h := range c.ConcreteHandlers {
+		maybeFile := filepath.Join(p.Dir, h.Match)
 
 		if _, err := os.Stat(maybeFile); err != nil {
-			fs, err := utils.GlobInDir(stackPath, h)
+			fs, err := utils.GlobInDir(stackPath, h.Match)
 			if err != nil {
 				return nil, err
 			}
@@ -51,7 +50,7 @@ func FromConfig(c *Config) (*Project, error) {
 				p.Functions[fn.Name] = fn
 			}
 		} else {
-			fn, err := FunctionFromHandler(h)
+			fn, err := FunctionFromHandler(h.Match)
 			if err != nil {
 				return nil, err
 			}
@@ -61,7 +60,7 @@ func FromConfig(c *Config) (*Project, error) {
 	}
 
 	if len(p.Functions) == 0 {
-		return nil, fmt.Errorf("no functions were found with the glob '%s', try a new pattern", strings.Join(c.Handlers, ","))
+		return nil, fmt.Errorf("no functions were found within match on handlers '%+v', try a new pattern", c.Handlers, ",")
 	}
 
 	return p, nil

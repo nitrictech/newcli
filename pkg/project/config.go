@@ -17,6 +17,7 @@
 package project
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -24,10 +25,30 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// Config shared by all compute types
+type BaseComputeConfig struct {
+	Type string `yaml:"type"`
+}
+
+type HandlerConfig struct {
+	BaseComputeConfig
+	Match string
+}
+
+// TODO: Determine best way to use generic mixed type constraint when deserializing
+// type Handler interface {
+// 	string | HandlerConfig
+// }
+
+type BaseConfig struct {
+	Name     string `yaml:"name"`
+	Dir      string `yaml:"-"`
+	Handlers []any  `yaml:"handlers"`
+}
+
 type Config struct {
-	Name     string   `yaml:"name"`
-	Dir      string   `yaml:"-"`
-	Handlers []string `yaml:"handlers"`
+	*BaseConfig
+	ConcreteHandlers []*HandlerConfig
 }
 
 func (p *Config) ToFile() error {
@@ -41,6 +62,39 @@ func (p *Config) ToFile() error {
 	}
 
 	return os.WriteFile(filepath.Join(p.Dir, "nitric.yaml"), b, 0o644)
+}
+
+// configFromBaseConfig - Unwraps Generic configs (e.g. Handler) and populates missing defaults (e.g. Type)
+func configFromBaseConfig(base *BaseConfig) (*Config, error) {
+	newConfig := &Config{
+		BaseConfig:       base,
+		ConcreteHandlers: make([]*HandlerConfig, 0),
+	}
+
+	for _, h := range base.Handlers {
+		if str, isString := h.(string); isString {
+			// if its a basic string populate with default handler config
+			newConfig.ConcreteHandlers = append(newConfig.ConcreteHandlers, &HandlerConfig{
+				BaseComputeConfig: BaseComputeConfig{
+					Type: "default",
+				},
+				Match: str,
+			})
+		} else if m, isMap := h.(map[string]any); isMap {
+			// otherwise extract its map configuration
+			// TODO: Check and validate the map properties
+			newConfig.ConcreteHandlers = append(newConfig.ConcreteHandlers, &HandlerConfig{
+				BaseComputeConfig: BaseComputeConfig{
+					Type: m["type"].(string),
+				},
+				Match: m["match"].(string),
+			})
+		} else {
+			return nil, fmt.Errorf("invalid handler config provided: %+v", h)
+		}
+	}
+
+	return newConfig, nil
 }
 
 // ConfigFromProjectPath - loads the config nitric.yaml file from the project path, defaults to the current working directory
@@ -59,7 +113,7 @@ func ConfigFromProjectPath(projPath string) (*Config, error) {
 		return nil, err
 	}
 
-	p := &Config{
+	p := &BaseConfig{
 		Dir: absDir,
 	}
 
@@ -73,5 +127,5 @@ func ConfigFromProjectPath(projPath string) (*Config, error) {
 		return nil, err
 	}
 
-	return p, nil
+	return configFromBaseConfig(p)
 }

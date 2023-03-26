@@ -28,7 +28,7 @@ import (
 )
 
 func (c *codeConfig) ToProject() (*project.Project, error) {
-	s := project.New(&project.Config{Name: c.initialProject.Name, Dir: c.initialProject.Dir})
+	s := project.New(&project.BaseConfig{Name: c.initialProject.Name, Dir: c.initialProject.Dir})
 
 	err := mergo.Merge(s, c.initialProject)
 	if err != nil {
