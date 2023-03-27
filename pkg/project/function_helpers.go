@@ -32,9 +32,9 @@ var DefaultOTELCollectorVersion string
 
 var _ Compute = &Function{}
 
-func (f *Function) String() string {
-	return fmt.Sprintf("%s(%s) telemetry:%v", f.Name, f.Handler, f.Telemetry)
-}
+// func (f *Function) String() string {
+// 	return fmt.Sprintf("%s(%s) telemetry:%v", f.Name, f.Handler, f.Telemetry)
+// }
 
 func (f *Function) Unit() *ComputeUnit {
 	return &f.ComputeUnit

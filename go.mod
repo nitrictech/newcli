@@ -31,7 +31,7 @@ require (
 	github.com/moby/moby v20.10.22+incompatible
 	github.com/nitrictech/go-mods-direct v0.0.0-20221212215233-12bba0c74a7f
 	github.com/nitrictech/nitric/cloud/aws v0.0.0-20230213031554-d8ff7f3013b8
-	github.com/nitrictech/nitric/core v0.0.0-20230326221153-6aa95786ef15
+	github.com/nitrictech/nitric/core v0.0.0-20230327032749-a67f53bf20d6
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.53
 	github.com/spf13/cobra v1.6.1

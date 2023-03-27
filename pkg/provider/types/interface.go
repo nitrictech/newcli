@@ -18,7 +18,6 @@ package types
 
 import (
 	"github.com/nitrictech/cli/pkg/output"
-	"github.com/nitrictech/cli/pkg/project"
 	deploy "github.com/nitrictech/nitric/core/pkg/api/nitric/deploy/v1"
 )
 
@@ -61,6 +60,5 @@ type Provider interface {
 type ConfigFromCode interface {
 	ProjectDir() string
 	ProjectName() string
-	ToProject() (*project.Project, error)
 	ToUpRequest() (*deploy.DeployUpRequest, error)
 }

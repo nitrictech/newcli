@@ -42,7 +42,7 @@ func FromConfig(c *Config) (*Project, error) {
 			}
 
 			for _, f := range fs {
-				fn, err := FunctionFromHandler(f)
+				fn, err := FunctionFromHandler(f, h.Type)
 				if err != nil {
 					return nil, err
 				}
@@ -50,7 +50,7 @@ func FromConfig(c *Config) (*Project, error) {
 				p.Functions[fn.Name] = fn
 			}
 		} else {
-			fn, err := FunctionFromHandler(h.Match)
+			fn, err := FunctionFromHandler(h.Match, h.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -66,7 +66,7 @@ func FromConfig(c *Config) (*Project, error) {
 	return p, nil
 }
 
-func FunctionFromHandler(h string) (Function, error) {
+func FunctionFromHandler(h string, t string) (Function, error) {
 	pterm.Debug.Println("Using function from " + h)
 
 	rt, err := runtime.NewRunTimeFromHandler(h)
@@ -77,6 +77,7 @@ func FunctionFromHandler(h string) (Function, error) {
 	return Function{
 		ComputeUnit: ComputeUnit{
 			Name: rt.ContainerName(),
+			Type: t,
 		},
 		Handler: h,
 	}, nil

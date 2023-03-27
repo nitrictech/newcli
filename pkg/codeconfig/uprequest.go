@@ -250,6 +250,9 @@ func (c *codeConfig) ToUpRequest() (*deploy.DeployUpRequest, error) {
 			})
 		}
 
+		// Get the original function config
+		fun := c.initialProject.Functions[f.name]
+
 		builder.set(&deploy.Resource{
 			Name: f.name,
 			Type: v1.ResourceType_Function,
@@ -261,6 +264,8 @@ func (c *codeConfig) ToUpRequest() (*deploy.DeployUpRequest, error) {
 						},
 					},
 					Workers: int32(f.WorkerCount()),
+					Type:    fun.Type,
+					Env:     c.envMap,
 				},
 			},
 		})
