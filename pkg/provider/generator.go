@@ -19,9 +19,12 @@ package provider
 import (
 	_ "embed"
 	"fmt"
+	"os"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/nitrictech/cli/pkg/provider/remote"
 	"github.com/nitrictech/cli/pkg/provider/types"
+	"github.com/pterm/pterm"
 )
 
 //go:embed nitric-version.txt
@@ -30,7 +33,27 @@ var knownlatestversion string
 func ProviderFromFile(cfc types.ConfigFromCode, name, provider string, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
 	switch provider {
 	case types.Aws, types.Azure, types.Gcp:
-		return remote.FromFile(cfc, name, fmt.Sprintf("nitric/%s@%s", provider, knownlatestversion), envMap, opts)
+		cont := false
+		pterm.Warning.Println("It looks you're using a legacy nitric configuration, to migrate checkout the docs at: https://nitric.io/docs")
+		err := survey.AskOne(&survey.Confirm{
+			Message: "Would you like to continue anyway? (this may result in functions being deployed with incorrect resource requirements)",
+			Default: false,
+		}, &cont)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !cont {
+			os.Exit(0)
+		}
+
+		prov, err := remote.FromFile(cfc, name, fmt.Sprintf("nitric/%s@%s", provider, knownlatestversion), envMap, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		return prov, nil
 	default:
 		return remote.FromFile(cfc, name, provider, envMap, opts)
 	}
