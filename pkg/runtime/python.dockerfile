@@ -10,8 +10,7 @@ RUN apt-get update -y && \
 
 RUN pip install --upgrade pip pipenv
 
-# Copy either requirements.txt for Pipfile
-COPY requirements.tx[t] Pipfil[e] Pipfile.loc[k] ./
+COPY . .
 
 # Guarantee lock file if we have a Pipfile and no Pipfile.lock
 RUN (stat Pipfile && pipenv lock) || echo "No Pipfile found"
@@ -20,7 +19,5 @@ RUN (stat Pipfile && pipenv lock) || echo "No Pipfile found"
 RUN (stat Pipfile.lock && pipenv requirements > requirements.txt) || echo "No Pipfile.lock found"
 
 RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
 
 ENTRYPOINT python $HANDLER
