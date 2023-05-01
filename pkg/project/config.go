@@ -28,7 +28,8 @@ import (
 
 // Config shared by all compute types
 type BaseComputeConfig struct {
-	Type string `yaml:"type"`
+	Type              string `yaml:"type"`
+	AllowPubsubCycles bool   `yaml:"allow-pubsub-cycles"`
 }
 
 type HandlerConfig struct {
