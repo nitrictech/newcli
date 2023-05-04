@@ -23,6 +23,7 @@ import { generatePathParams } from "./generate-path-params";
 import { generateResponse } from "../../lib/generate-response";
 import { formatResponseTime } from "./format-response-time";
 import Loading from "../shared/Loading";
+import classNames from "classnames";
 
 const getTabCount = (rows: FieldRow[]) => rows.filter((r) => !!r.key).length;
 
@@ -60,6 +61,8 @@ const APIExplorer = () => {
   const [selectedApiEndpoint, setSelectedApiEndpoint] = useState<Endpoint>();
   const [currentTabIndex, setCurrentTabIndex] = useState(0);
   const [responseTabIndex, setResponseTabIndex] = useState(0);
+
+  const [validRequest, setValidRequest] = useState(true);
 
   const paths = useMemo(
     () => data?.apis.map((doc) => flattenPaths(doc)).flat(),
@@ -100,6 +103,15 @@ const APIExplorer = () => {
       setResponse(undefined);
     }
   }, [selectedApiEndpoint]);
+
+  useEffect(() => {
+    // Validate that all path params are added
+    if (request.pathParams.some((p) => !p.value)) {
+      setValidRequest(false);
+      return;
+    }
+    setValidRequest(true);
+  }, [request.pathParams]);
 
   useEffect(() => {
     if (paths?.length) {
@@ -306,7 +318,13 @@ const APIExplorer = () => {
                     type="button"
                     data-testid="send-api-btn"
                     onClick={handleSend}
-                    className="inline-flex items-center rounded-md bg-blue-600 px-4 py-3 text-lg font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                    disabled={!validRequest}
+                    className={classNames(
+                      "inline-flex items-center rounded-md px-4 py-3 text-lg font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+                      validRequest
+                        ? "bg-blue-600 hover:bg-blue-500 focus-visible:outline-blue-600"
+                        : "bg-gray-400 hover:bg-gray-300 focus-visible:outline-gray-400"
+                    )}
                   >
                     Send
                   </button>
@@ -364,6 +382,7 @@ const APIExplorer = () => {
                             <FieldRows
                               lockKeys
                               testId="path"
+                              required={true}
                               rows={request.pathParams}
                               setRows={(rows) => {
                                 setRequest((prev) => ({

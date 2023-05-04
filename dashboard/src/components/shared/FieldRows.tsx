@@ -10,11 +10,18 @@ export interface FieldRow {
 interface Props {
   testId: string;
   rows: FieldRow[];
+  required?: boolean;
   lockKeys?: boolean;
   setRows: (value: FieldRow[]) => void;
 }
 
-const FieldRows: React.FC<Props> = ({ testId, rows, lockKeys, setRows }) => {
+const FieldRows: React.FC<Props> = ({
+  testId,
+  rows,
+  lockKeys,
+  setRows,
+  required = false,
+}) => {
   const id = useId();
 
   useEffect(() => {
@@ -91,7 +98,12 @@ const FieldRows: React.FC<Props> = ({ testId, rows, lockKeys, setRows }) => {
                   name={valueId}
                   id={valueId}
                   value={r.value}
-                  className="block w-full px-2 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                  className={classNames(
+                    "block w-full px-2 rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6",
+                    required && !r.value
+                      ? "ring-red-700"
+                      : "focus:ring-blue-600"
+                  )}
                 />
               </div>
             </div>
