@@ -38,5 +38,4 @@ RUN \
 --mount=type=cache,target=/node_modules \
 set -ex; yarn install --production --frozen-lockfile --cache-folder /tmp/.cache; rm -rf /tmp/.cache
 
-
 ENTRYPOINT ["node", "index.js"]
