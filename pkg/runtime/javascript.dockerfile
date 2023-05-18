@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM "node:alpine"
 
 ARG HANDLER
