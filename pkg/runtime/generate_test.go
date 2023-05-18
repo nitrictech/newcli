@@ -32,7 +32,8 @@ func TestGenerate(t *testing.T) {
 		{
 			name:    "ts",
 			handler: "functions/list.ts",
-			wantFwriter: `FROM node:alpine as build
+			wantFwriter: `# syntax=docker/dockerfile:1
+FROM node:alpine as build
 
 ARG HANDLER
 
@@ -135,7 +136,8 @@ ENTRYPOINT python $HANDLER
 		{
 			name:    "js",
 			handler: "functions/list.js",
-			wantFwriter: `FROM "node:alpine"
+			wantFwriter: `# syntax=docker/dockerfile:1
+FROM "node:alpine"
 
 ARG HANDLER
 ENV HANDLER=${HANDLER}
