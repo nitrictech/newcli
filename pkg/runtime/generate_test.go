@@ -55,7 +55,9 @@ set -ex; yarn install --frozen-lockfile --cache-folder /tmp/.cache
 
 RUN test -f tsconfig.json || echo "{\"compilerOptions\":{\"esModuleInterop\":true,\"target\":\"es2015\",\"moduleResolution\":\"node\"}}" > tsconfig.json
 
-RUN ncc build ${HANDLER} -m --v8-cache -o lib/
+RUN \
+--mount=type=cache,target=/tmp/ncc-cache \
+ncc build ${HANDLER} -m --v8-cache -o lib/
 
 FROM node:alpine as final
 
