@@ -1,19 +1,17 @@
 import { Fragment, PropsWithChildren, ReactNode, useState } from "react";
-import { Dialog, Menu, Popover, Transition } from "@headlessui/react";
+import { Dialog, Popover, Transition } from "@headlessui/react";
 import {
   DocumentDuplicateIcon,
   Bars3Icon,
   GlobeAltIcon,
   XMarkIcon,
   ClockIcon,
-  ChatBubbleLeftIcon,
   CircleStackIcon,
   MegaphoneIcon,
-  ChevronDownIcon,
-  BellIcon,
   QuestionMarkCircleIcon,
   PaperAirplaneIcon,
   ChatBubbleBottomCenterIcon,
+  Square3Stack3DIcon,
 } from "@heroicons/react/24/outline";
 import classNames from "classnames";
 import { useWebSocket } from "../../lib/hooks/use-web-socket";
@@ -33,7 +31,7 @@ const DiscordLogo: React.FC<React.SVGProps<SVGSVGElement>> = ({
     className={className}
     viewBox="0 0 127.14 96.36"
   >
-    <g id="图层_2" data-name="图层 2">
+    <g id="layers" data-name="layers">
       <g id="Discord_Logos" data-name="Discord Logos">
         <g
           id="Discord_Logo_-_Large_-_White"
@@ -97,32 +95,44 @@ const AppLayout: React.FC<Props> = ({
   // remove trailing slash
   routePath = routePath !== "/" ? routePath.replace(/\/$/, "") : routePath;
 
+  const counts = {
+    apis: data?.apis?.length || 0,
+    schedules: data?.schedules?.length || 0,
+    storage: data?.buckets?.length || 0,
+    topics: data?.topics?.length || 0,
+  };
+
   const navigation = [
     {
       name: "API Explorer",
       href: "/",
       icon: GlobeAltIcon,
-      count: data?.apis.length,
+      count: counts["apis"],
     },
     {
       name: "Schedules",
       href: "/schedules",
       icon: ClockIcon,
-      count: data?.schedules?.length || 0,
+      count: counts["schedules"],
     },
     {
       name: "Storage",
       href: "/storage",
       icon: CircleStackIcon,
-      count: data?.buckets?.length || 0,
+      count: counts["storage"],
     },
     {
       name: "Topics",
       href: "/topics",
       icon: MegaphoneIcon,
-      count: data?.topics?.length,
+      count: counts["topics"],
     },
-    // { name: "Storage", href: "#", icon: CircleStackIcon, current: false },
+    {
+      name: "Resources",
+      href: "/resources",
+      icon: Square3Stack3DIcon,
+      count: Object.values(counts).reduce((prev, curr) => prev + curr, 0),
+    },
     // { name: "Collections", href: "#", icon: FolderIcon, current: false },
     // { name: "Secrets", href: "#", icon: LockClosedIcon, current: false },
   ];

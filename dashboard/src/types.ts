@@ -29,13 +29,15 @@ export interface History {
   topics: EventHistoryItem[];
 }
 
-export interface WebSocketResponse {
-  projectName: string;
+export interface StackData {
+  topics: WorkerResource[];
+  schedules: WorkerResource[];
   buckets: string[];
   apis: APIDoc[];
-  schedules: WorkerResource[];
-  topics: WorkerResource[];
-  subscriptions: WorkerResource[];
+}
+
+export interface WebSocketResponse extends StackData {
+  projectName: string;
   triggerAddress: string;
   apiAddresses: Record<string, string>;
   storageAddress: string; // has http:// prefix
