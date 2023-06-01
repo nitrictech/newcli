@@ -5,12 +5,18 @@ import {
   ClockIcon,
   CircleStackIcon,
   MegaphoneIcon,
+  LockClosedIcon,
+  TableCellsIcon,
+  RectangleStackIcon,
 } from "@heroicons/react/24/outline";
+import { CubeIcon } from "@heroicons/react/20/solid";
 
 type NodeResource = WorkerResource | string | APIDoc;
 
+export type ResourceType = "api" | "bucket" | "topic" | "schedule" | "project";
+
 export interface Resource {
-  type: keyof StackData;
+  type: ResourceType;
   name: string;
   icon: ReactNode;
 }
@@ -32,7 +38,7 @@ function getResourceName(resource: NodeResource): string {
   return resource;
 }
 
-function getResourceIcon(type: string) {
+function getResourceIcon(type: string): JSX.Element {
   switch (type) {
     case "schedules":
       return <ClockIcon className="w-6" />;
@@ -42,19 +48,31 @@ function getResourceIcon(type: string) {
       return <CircleStackIcon className="w-6" />;
     case "apis":
       return <GlobeAltIcon className="w-6" />;
+    case "collections":
+      return <TableCellsIcon className="w-6" />;
+    case "secrets":
+      return <LockClosedIcon className="w-6" />;
+    case "queues":
+      return <RectangleStackIcon className="w-6" />;
+    default:
+      return <CubeIcon className="w-6" />;
   }
 }
 
 export const convertStackDataToResources = (
   stackData: StackData
 ): Resource[] => {
+  if (!stackData) return [];
+
   return (
     Object.entries(stackData) as [keyof StackData, NodeResource[]][]
   ).flatMap(([resourceType, resources]) => {
+    if (!resources) return [];
+
     return resources.map(
       (resource) =>
         ({
-          type: resourceType,
+          type: resourceType.slice(0, -1) as ResourceType,
           name: getResourceName(resource),
           icon: getResourceIcon(resourceType),
         } as Resource)

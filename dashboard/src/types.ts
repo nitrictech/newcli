@@ -30,10 +30,13 @@ export interface History {
 }
 
 export interface StackData {
-  topics: WorkerResource[];
-  schedules: WorkerResource[];
-  buckets: string[];
-  apis: APIDoc[];
+  topics?: WorkerResource[];
+  schedules?: WorkerResource[];
+  buckets?: string[];
+  collections?: string[];
+  queues?: string[];
+  secrets?: string[];
+  apis?: APIDoc[];
 }
 
 export interface WebSocketResponse extends StackData {

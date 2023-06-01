@@ -78,19 +78,15 @@ const EventsExplorer: React.FC<Props> = ({ workerType }) => {
     if (data && data[workerType]) {
       // restore history or select first if not selected
       if (!selectedWorker) {
-        const previousId = localStorage.getItem(
-          `${storageKey}-last-${workerType}`
-        );
+        const previousId =
+          localStorage.getItem(`${storageKey}-last-${workerType}`) || "";
 
-        const worker =
-          (previousId &&
-            data[workerType].find((s) => s.topicKey === previousId)) ||
-          data[workerType][0];
+        const worker = data[workerType]?.find((s) => s.topicKey === previousId);
 
         setSelectedWorker(worker);
       } else {
         // could be a refresh from ws, so update the selected endpoint
-        const latest = data[workerType].find(
+        const latest = data[workerType]?.find(
           (s) => s.topicKey === selectedWorker.topicKey
         );
 
@@ -173,7 +169,7 @@ const EventsExplorer: React.FC<Props> = ({ workerType }) => {
               onSelect={(resource) => {
                 setSelectedWorker(resource);
               }}
-              resources={data[workerType]}
+              resources={data[workerType] ?? []}
             />
           </>
         )
@@ -205,7 +201,7 @@ const EventsExplorer: React.FC<Props> = ({ workerType }) => {
                       {data[workerType] && (
                         <Select<WorkerResource>
                           id={`${workerType}-select`}
-                          items={data[workerType]}
+                          items={data[workerType] ?? []}
                           label={capitalize(workerType)}
                           selected={selectedWorker}
                           setSelected={setSelectedWorker}

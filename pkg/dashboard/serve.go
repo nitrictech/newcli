@@ -45,6 +45,9 @@ type Dashboard struct {
 	schedules            []*codeconfig.TopicResult
 	topics               []*codeconfig.TopicResult
 	buckets              []string
+	collections          []string
+	queues               []string
+	secrets              []string
 	envMap               map[string]string
 	melody               *melody.Melody
 	triggerAddress       string
@@ -60,10 +63,13 @@ type Api struct {
 }
 
 type DashboardResponse struct {
-	Apis                []*openapi3.T                    `json:"apis,omitempty"`
-	Buckets             []string                         `json:"buckets,omitempty"`
-	Schedules           []*codeconfig.TopicResult        `json:"schedules,omitempty"`
-	Topics              []*codeconfig.TopicResult        `json:"topics,omitempty"`
+	Apis                []*openapi3.T                    `json:"apis"`
+	Buckets             []string                         `json:"buckets"`
+	Collections         []string                         `json:"collections"`
+	Queues              []string                         `json:"queues"`
+	Secrets             []string                         `json:"secrets"`
+	Schedules           []*codeconfig.TopicResult        `json:"schedules"`
+	Topics              []*codeconfig.TopicResult        `json:"topics"`
 	ProjectName         string                           `json:"projectName,omitempty"`
 	ApiAddresses        map[string]string                `json:"apiAddresses,omitempty"`
 	TriggerAddress      string                           `json:"triggerAddress,omitempty"`
@@ -114,6 +120,57 @@ func (d *Dashboard) AddBucket(name string) {
 	}
 
 	d.buckets = append(d.buckets, name)
+
+	d.resourcesLastUpdated = time.Now()
+}
+
+func (d *Dashboard) AddQueue(name string) {
+	// reset buckets to allow for most recent resources only
+	if !d.resourcesLastUpdated.IsZero() && time.Since(d.resourcesLastUpdated) > time.Second*5 {
+		d.queues = []string{}
+	}
+
+	for _, q := range d.queues {
+		if q == name {
+			return
+		}
+	}
+
+	d.queues = append(d.queues, name)
+
+	d.resourcesLastUpdated = time.Now()
+}
+
+func (d *Dashboard) AddCollection(name string) {
+	// reset buckets to allow for most recent resources only
+	if !d.resourcesLastUpdated.IsZero() && time.Since(d.resourcesLastUpdated) > time.Second*5 {
+		d.collections = []string{}
+	}
+
+	for _, c := range d.collections {
+		if c == name {
+			return
+		}
+	}
+
+	d.collections = append(d.collections, name)
+
+	d.resourcesLastUpdated = time.Now()
+}
+
+func (d *Dashboard) AddSecret(name string) {
+	// reset buckets to allow for most recent resources only
+	if !d.resourcesLastUpdated.IsZero() && time.Since(d.resourcesLastUpdated) > time.Second*5 {
+		d.secrets = []string{}
+	}
+
+	for _, s := range d.secrets {
+		if s == name {
+			return
+		}
+	}
+
+	d.secrets = append(d.secrets, name)
 
 	d.resourcesLastUpdated = time.Now()
 }
@@ -394,6 +451,9 @@ func (d *Dashboard) sendUpdate() error {
 		Topics:              d.topics,
 		Buckets:             d.buckets,
 		Schedules:           d.schedules,
+		Queues:              d.queues,
+		Collections:         d.collections,
+		Secrets:             d.secrets,
 		ProjectName:         d.project.Name,
 		ApiAddresses:        d.apiAddresses,
 		TriggerAddress:      d.triggerAddress,

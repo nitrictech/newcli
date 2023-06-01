@@ -3,23 +3,34 @@ import { useWebSocket } from "../../lib/hooks/use-web-socket";
 import AppLayout from "../layout/AppLayout";
 import ArchitectureDiagram from "./ArchitectureDiagram";
 import { Resource, convertStackDataToResources } from "./utils";
+import { CubeIcon } from "@heroicons/react/24/outline";
 import ResourceTreeView from "./ResourceTreeView";
 
 const ResourceExplorer = () => {
   const { data, loading } = useWebSocket();
 
-  const resourceData = useMemo(
-    () =>
-      convertStackDataToResources({
-        apis: data?.apis || [],
-        buckets: data?.buckets || [],
-        topics: data?.topics || [],
-        schedules: data?.schedules || [],
-      }),
-    [data]
-  );
+  const resourceData = useMemo(() => {
+    if (!data) return [] as Resource[];
 
-  const defaultResource = { type: "apis", name: "", icon: <></> } as Resource;
+    return [
+      {
+        type: "project",
+        name: data.projectName,
+        icon: <CubeIcon className="w-6" />,
+      } as Resource,
+      ...convertStackDataToResources({
+        apis: data.apis,
+        buckets: data.buckets,
+        topics: data.topics,
+        schedules: data.schedules,
+        queues: data.queues,
+        secrets: data.secrets,
+        collections: data.collections,
+      }),
+    ];
+  }, [data]);
+
+  const defaultResource = { type: "api", name: "", icon: <></> } as Resource;
 
   const [selectedResource, setSelectedResource] =
     useState<Resource>(defaultResource);
@@ -36,12 +47,21 @@ const ResourceExplorer = () => {
             onSelect={(resource) => {
               setSelectedResource(resource);
             }}
-            resources={resourceData}
+            resources={resourceData.filter((r) => r.type !== "project")}
           />
         </>
       }
     >
-      <ArchitectureDiagram loading={loading} data={resourceData} />
+      {!loading && data && (
+        <div className="h-[700px] w-full">
+          <ArchitectureDiagram
+            projectName={data.projectName}
+            resources={resourceData}
+            selectedResource={selectedResource}
+            setSelectedResource={setSelectedResource}
+          />
+        </div>
+      )}
     </AppLayout>
   );
 };

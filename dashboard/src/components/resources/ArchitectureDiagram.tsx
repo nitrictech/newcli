@@ -1,51 +1,60 @@
-import React, { useEffect, useMemo, useState } from "react";
-import ReactFlow, { Node, Edge } from "react-flow-renderer";
-import type { StackData } from "../../types";
+import React, { useMemo, useState } from "react";
+import ReactFlow, { Node, Edge } from "reactflow";
 import { Resource, getPositionedElements } from "./utils";
+import ResourceNode from "./ResourceNode";
+
+import "reactflow/dist/style.css";
 
 interface Props {
-  data: Resource[];
-  loading: boolean;
+  projectName: string;
+  resources: Resource[];
+  selectedResource: Resource;
+  setSelectedResource: (resource: Resource) => void;
 }
 
-const StackGraphView: React.FC<Props> = ({ data, loading }) => {
+const ArchitectureDiagram: React.FC<Props> = ({
+  resources,
+  projectName,
+  selectedResource,
+  setSelectedResource,
+}) => {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
+  if (!resources) return null;
+
   useMemo(() => {
-    if (!data) return;
+    const nodes: Node[] = resources.map((resource) => ({
+      id: `${resource.type}-${resource.name}`,
+      position: { x: 0, y: 0 },
+      selected: resource === selectedResource,
+      type: "resource",
+      data: {
+        resource,
+        selectedResource,
+        setSelectedResource: setSelectedResource.bind(null, resource),
+      },
+    }));
 
-    const nodes = data.map(
-      (resource, idx) =>
-        ({
-          id: `${resource.type}-${idx}`,
-          data: {
-            label: (
-              <div>
-                <p>{resource.name}</p>
-                {resource.icon}
-              </div>
-            ),
-          },
-          position: { x: 0, y: 0 },
-        } as Node)
-    );
-
-    const edges = [] as Edge[];
+    // Connect resources to project
+    const edges: Edge[] = resources
+      .filter((resource) => resource.type !== "project")
+      .map((resource) => ({
+        id: `e-${resource.type}${resource.name}`,
+        source: `project-${projectName}`,
+        target: `${resource.type}-${resource.name}`,
+      }));
 
     const { nodes: positionedNodes, edges: positionedEdges } =
       getPositionedElements(nodes, edges);
 
-    setNodes([...positionedNodes]);
-    setEdges([...positionedEdges]);
-  }, [data]);
+    setNodes(positionedNodes);
+    setEdges(positionedEdges);
+  }, [resources]);
 
-  return (
-    <div className="h-[700px] w-full">
-      {!loading && data && (
-        <ReactFlow nodes={nodes} edges={edges} defaultZoom={1.5} fitView />
-      )}
-    </div>
-  );
+  const nodeTypes = useMemo(() => ({ resource: ResourceNode }), []);
+
+  return <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} />;
 };
-export default StackGraphView;
+
+export default ArchitectureDiagram;

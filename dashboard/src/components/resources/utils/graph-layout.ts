@@ -1,10 +1,10 @@
 import dagre from "dagre";
-import type { Node, Edge } from "react-flow-renderer";
+import type { Node, Edge } from "reactflow";
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-const nodeWidth = 200;
+const nodeWidth = 250;
 const nodeHeight = 200;
 
 export const getPositionedElements = (nodes: Node[], edges: Edge[]) => {
