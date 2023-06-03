@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/nitrictech/cli/pkg/preview"
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
@@ -44,10 +45,10 @@ type HandlerConfig struct {
 // }
 
 type BaseConfig struct {
-	Name            string   `yaml:"name"`
-	Dir             string   `yaml:"-"`
-	Handlers        []any    `yaml:"handlers"`
-	PreviewFeatures []string `yaml:"preview-features"`
+	Name            string            `yaml:"name"`
+	Dir             string            `yaml:"-"`
+	Handlers        []any             `yaml:"handlers"`
+	PreviewFeatures []preview.Feature `yaml:"preview-features"`
 }
 
 type Config struct {
