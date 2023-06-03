@@ -44,9 +44,10 @@ type HandlerConfig struct {
 // }
 
 type BaseConfig struct {
-	Name     string `yaml:"name"`
-	Dir      string `yaml:"-"`
-	Handlers []any  `yaml:"handlers"`
+	Name            string   `yaml:"name"`
+	Dir             string   `yaml:"-"`
+	Handlers        []any    `yaml:"handlers"`
+	PreviewFeatures []string `yaml:"preview-features"`
 }
 
 type Config struct {

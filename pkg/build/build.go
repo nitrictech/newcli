@@ -79,32 +79,3 @@ func BuildBaseImages(s *project.Project) error {
 
 	return nil
 }
-
-func List(s *project.Project) ([]containerengine.Image, error) {
-	cr, err := containerengine.Discover()
-	if err != nil {
-		return nil, err
-	}
-
-	images := []containerengine.Image{}
-
-	for _, f := range s.Functions {
-		imgs, err := cr.ListImages(s.Name, f.Name)
-		if err != nil {
-			fmt.Println("Error: ", err)
-		} else {
-			images = append(images, imgs...)
-		}
-	}
-
-	for _, c := range s.Containers {
-		imgs, err := cr.ListImages(s.Name, c.Name)
-		if err != nil {
-			fmt.Println("Error: ", err)
-		} else {
-			images = append(images, imgs...)
-		}
-	}
-
-	return images, nil
-}

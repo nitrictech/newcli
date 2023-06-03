@@ -18,22 +18,11 @@ package project
 
 import (
 	_ "embed"
-	"fmt"
 	"path/filepath"
 )
 
 //go:embed otel-collector-version.txt
 var DefaultOTELCollectorVersion string
-
-var _ Compute = &Function{}
-
-// func (f *Function) String() string {
-// 	return fmt.Sprintf("%s(%s) telemetry:%v", f.Name, f.Handler, f.Telemetry)
-// }
-
-func (f *Function) Unit() *ComputeUnit {
-	return &f.ComputeUnit
-}
 
 func (f *Function) RelativeHandlerPath(s *Project) (string, error) {
 	relativeHandlerPath := f.Handler
@@ -48,19 +37,4 @@ func (f *Function) RelativeHandlerPath(s *Project) (string, error) {
 	}
 
 	return relativeHandlerPath, nil
-}
-
-// ImageTagName returns the default image tag for a source image built from this function
-// provider the provider name (e.g. aws), used to uniquely identify builds for specific providers
-func (f *Function) ImageTagName(s *Project, provider string) string {
-	providerString := ""
-	if provider != "" {
-		providerString = "-" + provider
-	}
-
-	return fmt.Sprintf("%s-%s%s", s.Name, f.Name, providerString)
-}
-
-func (c *Function) Workers() int {
-	return c.WorkerCount
 }
