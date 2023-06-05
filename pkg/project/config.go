@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
+	"github.com/nitrictech/cli/pkg/preview"
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
@@ -44,9 +45,10 @@ type HandlerConfig struct {
 // }
 
 type BaseConfig struct {
-	Name     string `yaml:"name"`
-	Dir      string `yaml:"-"`
-	Handlers []any  `yaml:"handlers"`
+	Name            string            `yaml:"name"`
+	Dir             string            `yaml:"-"`
+	Handlers        []any             `yaml:"handlers"`
+	PreviewFeatures []preview.Feature `yaml:"preview-features"`
 }
 
 type Config struct {
@@ -72,6 +74,10 @@ func configFromBaseConfig(base BaseConfig) (*Config, error) {
 	newConfig := &Config{
 		BaseConfig:       base,
 		ConcreteHandlers: make([]*HandlerConfig, 0),
+	}
+
+	if newConfig.BaseConfig.PreviewFeatures == nil {
+		newConfig.BaseConfig.PreviewFeatures = make([]string, 0)
 	}
 
 	for _, h := range base.Handlers {
