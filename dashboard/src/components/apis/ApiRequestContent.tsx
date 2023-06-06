@@ -1,47 +1,48 @@
 import { formatJSON, getFileExtension } from "../../lib/utils";
-import type { APIResponse } from "../../types";
 import CodeEditor from "./CodeEditor";
 
 interface Props {
-  response: APIResponse;
+  data: string;
+  headers: Record<string, string[]>;
 }
 
-const APIResponseContent: React.FC<Props> = ({ response }) => {
-  let contentType = response.headers!["content-type"];
-  contentType = Array.isArray(contentType) ? contentType[0] : contentType;
+const APIRequestContent: React.FC<Props> = ({ data, headers }) => {
+  const contentTypes = Object.entries(headers).find(
+    ([key, _]) => key.toLowerCase() === "content-type"
+  );
 
-  if (!contentType) {
-    return null;
-  }
+  if (!contentTypes) return null;
+
+  const contentType = contentTypes[1][0];
 
   if (contentType.startsWith("image/")) {
     return (
       <img
         data-testid="response-image"
-        src={response.data}
+        src={data}
         alt={"response content"}
         className="w-full max-h-96 object-contain"
       />
     );
   } else if (contentType.startsWith("video/")) {
-    return <video src={response.data} controls />;
+    return <video src={data} controls />;
   } else if (contentType.startsWith("audio/")) {
-    return <audio src={response.data} controls />;
+    return <audio src={data} controls />;
   } else if (contentType === "application/pdf") {
-    return <iframe title="Response PDF" className="h-96" src={response.data} />;
+    return <iframe title="Response PDF" className="h-96" src={data} />;
   } else if (
     contentType.startsWith("application/") &&
     contentType !== "application/json"
   ) {
     const ext = getFileExtension(contentType);
 
-    const fileName = response.data.split("/")[3] + ext;
+    const fileName = data.split("/")[3] + ext;
 
     return (
       <div className="my-4">
         The response is binary, you can{" "}
         <a
-          href={response.data}
+          href={data}
           data-testid="response-binary-link"
           className="underline"
           download={fileName}
@@ -55,7 +56,7 @@ const APIResponseContent: React.FC<Props> = ({ response }) => {
 
   if (contentType === "application/json") {
     // format
-    response.data = formatJSON(response.data);
+    data = formatJSON(data);
   }
 
   return (
@@ -63,10 +64,10 @@ const APIResponseContent: React.FC<Props> = ({ response }) => {
       id="api-response"
       enableCopy
       contentType={contentType}
-      value={response.data}
+      value={data}
       readOnly
     />
   );
 };
 
-export default APIResponseContent;
+export default APIRequestContent;

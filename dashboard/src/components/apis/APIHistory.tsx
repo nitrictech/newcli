@@ -1,13 +1,13 @@
 import type { ApiHistoryItem, Endpoint } from "../../types";
 import Badge from "../shared/Badge";
-import { formatJSON, getDateString } from "../../lib/utils";
+import { getDateString } from "../../lib/utils";
 import { Disclosure } from "@headlessui/react";
 import { ChevronUpIcon } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Tabs } from "../shared";
-import CodeEditor from "./CodeEditor";
 import APIResponseContent from "./APIResponseContent";
 import TableGroup from "../shared/TableGroup";
+import APIRequestContent from "./ApiRequestContent";
 
 interface Props {
   history: ApiHistoryItem[];
@@ -49,16 +49,6 @@ const APIHistory: React.FC<Props> = ({ history, selectedRequest }) => {
   );
 };
 
-function isJSON(data: string | undefined) {
-  if (!data) return false;
-  try {
-    JSON.parse(data);
-  } catch (e) {
-    return false;
-  }
-  return true;
-}
-
 const ApiHistoryAccordion: React.FC<ApiHistoryItem> = ({
   api,
   success,
@@ -67,12 +57,26 @@ const ApiHistoryAccordion: React.FC<ApiHistoryItem> = ({
   response,
 }) => {
   const [tabIndex, setTabIndex] = useState(0);
+  const [historyTabs, setHistoryTabs] = useState<{ name: string }[]>([]);
 
-  const isJson = isJSON(atob(request.body?.toString() ?? ""));
+  useMemo(() => {
+    const tabs = [{ name: "Headers" }];
 
-  const tabs = [{ name: "Headers" }, { name: "Response" }];
+    if (
+      response.data &&
+      Object.keys(response.headers ?? []).some(
+        (header) => header.toLowerCase() === "content-type"
+      )
+    ) {
+      tabs.push({ name: "Response" });
 
-  const jsonTabs = [...tabs, { name: "Payload" }];
+      if (request.body) {
+        tabs.push({ name: "Payload" });
+      }
+    }
+
+    setHistoryTabs(tabs);
+  }, []);
 
   return (
     <Disclosure>
@@ -109,7 +113,7 @@ const ApiHistoryAccordion: React.FC<ApiHistoryItem> = ({
             <div className="flex flex-col py-4">
               <div className="bg-white shadow sm:rounded-lg">
                 <Tabs
-                  tabs={isJson ? jsonTabs : tabs}
+                  tabs={historyTabs}
                   index={tabIndex}
                   setIndex={setTabIndex}
                 />
@@ -151,13 +155,9 @@ const ApiHistoryAccordion: React.FC<ApiHistoryItem> = ({
                     <div className="flex flex-col gap-8">
                       <div className="flex flex-col gap-2">
                         <p className="text-md font-semibold">Request Body</p>
-                        <CodeEditor
-                          contentType="application/json"
-                          readOnly={true}
-                          value={formatJSON(
-                            JSON.parse(atob(request.body?.toString() ?? ""))
-                          )}
-                          title="Request Body"
+                        <APIRequestContent
+                          headers={request.headers}
+                          data={atob(request.body?.toString() ?? "")}
                         />
                       </div>
                       <div className="flex flex-col gap-2">

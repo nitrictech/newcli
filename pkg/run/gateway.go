@@ -169,6 +169,10 @@ func (s *BaseHttpGateway) handleHttpRequest(apiIdx int) func(ctx *fasthttp.Reque
 				}
 			}
 
+			mappedHeaders := lo.MapEntries(headers, func(k string, v *v1.HeaderValue) (string, []string) {
+				return k, v.Value
+			})
+			
 			err = s.project.History.WriteHistoryRecord(history.API, &history.HistoryRecord{
 				Success: http.Status < 400,
 				Time:    time.Now().UnixMilli(),
@@ -178,11 +182,9 @@ func (s *BaseHttpGateway) handleHttpRequest(apiIdx int) func(ctx *fasthttp.Reque
 						Method:      string(ctx.Request.Header.Method()),
 						Path:        string(ctx.URI().PathOriginal()),
 						QueryParams: queryParams,
-						Headers: lo.MapEntries(headers, func(k string, v *v1.HeaderValue) (string, []string) {
-							return k, v.Value
-						}),
-						Body:       ctx.Request.Body(),
-						PathParams: []history.Param{},
+						Headers:     mappedHeaders,
+						Body:        ctx.Request.Body(),
+						PathParams:  []history.Param{},
 					},
 					Response: &history.ResponseHistory{
 						Headers: lo.MapEntries(http.Headers, func(k string, v *v1.HeaderValue) (string, []string) {
