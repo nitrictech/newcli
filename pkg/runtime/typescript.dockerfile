@@ -30,11 +30,11 @@ RUN \
 
 FROM node:alpine as final
 
-WORKDIR /usr/app
-
 RUN apk update && \
     apk add --no-cache ca-certificates && \
     update-ca-certificates
+
+WORKDIR /usr/app
 
 COPY package.json *.lock *-lock.json ./
 
