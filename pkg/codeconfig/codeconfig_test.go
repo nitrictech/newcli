@@ -154,6 +154,16 @@ func Test_specFromWorkerPool(t *testing.T) {
 					t.Fatal(err)
 				}
 
+				err = workerPool.AddWorker(worker.NewHttpWorker(&adapter.GrpcAdapter{}, 3000))
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				err = workerPool.AddWorker(worker.NewHttpWorker(&adapter.GrpcAdapter{}, 8080))
+				if err != nil {
+					t.Fatal(err)
+				}
+
 				return workerPool
 			}(),
 			expect: &SpecResult{
@@ -193,6 +203,7 @@ func Test_specFromWorkerPool(t *testing.T) {
 					},
 				},
 				Topics: []*TopicResult{{WorkerKey: "test-subscription", TopicKey: "test-subscription"}},
+				HttpWorkers: []*HttpWorker{{Port:3000},{Port:8080}},
 			},
 		},
 	}

@@ -49,6 +49,7 @@ type apiServer struct {
 type BaseHttpGateway struct {
 	apiServers      []*apiServer
 	apis            []string
+	httpWorkers     []int
 	serviceServer   *fasthttp.Server
 	serviceListener net.Listener
 	gateway.UnimplementedGatewayPlugin
@@ -63,6 +64,10 @@ var _ gateway.GatewayService = &BaseHttpGateway{}
 
 func apiWorkerFilter(apiName string) func(w worker.Worker) bool {
 	return func(w worker.Worker) bool {
+		if _, ok := w.(*worker.HttpWorker); ok {
+			return true
+		}
+
 		if api, ok := w.(*worker.RouteWorker); ok {
 			return api.Api() == apiName
 		}
@@ -91,14 +96,30 @@ func (s *BaseHttpGateway) GetApiAddresses() map[string]string {
 	return addresses
 }
 
+func (s *BaseHttpGateway) GetHttpWorkerAddresses() map[int]string {
+	addresses := make(map[int]string)
+
+	for idx, port := range s.httpWorkers {
+		addresses[port] = strings.Replace(s.apiServers[idx].lis.Addr().String(), "[::]", "localhost", 1)
+	}
+
+	return addresses
+}
+
 func (s *BaseHttpGateway) handleHttpRequest(apiIdx int) func(ctx *fasthttp.RequestCtx) {
 	return func(ctx *fasthttp.RequestCtx) {
-		if apiIdx >= len(s.apis) {
+		if len(s.httpWorkers) == 0 && apiIdx >= len(s.apis) {
 			ctx.Error("Sorry, nitric is listening on this port but is waiting for an API to be available to handle, you may have removed an API during development this port will be assigned to an API when one becomes available", 404)
 			return
 		}
 
-		apiName := s.apis[apiIdx]
+		apiName := ""
+
+		// API names are only relevant for api workers
+		if len(s.apis) > 0 {
+			apiName = s.apis[apiIdx]
+		}
+
 		headerMap := base_http.HttpHeadersToMap(&ctx.Request.Header)
 
 		headers := map[string]*v1.HeaderValue{}
@@ -169,39 +190,42 @@ func (s *BaseHttpGateway) handleHttpRequest(apiIdx int) func(ctx *fasthttp.Reque
 				}
 			}
 
-			err = s.project.History.WriteHistoryRecord(history.API, &history.HistoryRecord{
-				Success: http.Status < 400,
-				Time:    time.Now().UnixMilli(),
-				ApiHistoryItem: history.ApiHistoryItem{
-					Api: s.GetApiAddresses()[apiName],
-					Request: &history.RequestHistory{
-						Method:      string(ctx.Request.Header.Method()),
-						Path:        string(ctx.URI().PathOriginal()),
-						QueryParams: queryParams,
-						Headers: lo.MapEntries(headers, func(k string, v *v1.HeaderValue) (string, []string) {
-							return k, v.Value
-						}),
-						Body:       ctx.Request.Body(),
-						PathParams: []history.Param{},
+			// Write history if it was an API request
+			if len(s.apis) > 0 {
+				err = s.project.History.WriteHistoryRecord(history.API, &history.HistoryRecord{
+					Success: http.Status < 400,
+					Time:    time.Now().UnixMilli(),
+					ApiHistoryItem: history.ApiHistoryItem{
+						Api: s.GetApiAddresses()[apiName],
+						Request: &history.RequestHistory{
+							Method:      string(ctx.Request.Header.Method()),
+							Path:        string(ctx.URI().PathOriginal()),
+							QueryParams: queryParams,
+							Headers: lo.MapEntries(headers, func(k string, v *v1.HeaderValue) (string, []string) {
+								return k, v.Value
+							}),
+							Body:       ctx.Request.Body(),
+							PathParams: []history.Param{},
+						},
+						Response: &history.ResponseHistory{
+							Headers: lo.MapEntries(http.Headers, func(k string, v *v1.HeaderValue) (string, []string) {
+								return k, v.Value
+							}),
+							Time:   time.Since(ctx.ConnTime()).Milliseconds(),
+							Status: http.Status,
+							Data:   resp.Data,
+							Size:   len(resp.Data),
+						},
 					},
-					Response: &history.ResponseHistory{
-						Headers: lo.MapEntries(http.Headers, func(k string, v *v1.HeaderValue) (string, []string) {
-							return k, v.Value
-						}),
-						Time:   time.Since(ctx.ConnTime()).Milliseconds(),
-						Status: http.Status,
-						Data:   resp.Data,
-						Size:   len(resp.Data),
-					},
-				},
-			})
-			if err != nil {
-				fmt.Println(err.Error())
-			}
+				})
+				if err != nil {
+					fmt.Println(err.Error())
+				}
 
-			err = s.dash.RefreshHistory()
-			if err != nil {
-				fmt.Println(err.Error())
+				err = s.dash.RefreshHistory()
+				if err != nil {
+					fmt.Println(err.Error())
+				}
 			}
 
 			return
@@ -276,13 +300,8 @@ func (s *BaseHttpGateway) handleTopicRequest(ctx *fasthttp.RequestCtx) {
 	ctx.Error(fmt.Sprintf("%d successful & %d failed deliveries", len(ws)-len(errList), len(errList)), statusCode)
 }
 
-// Update the gateway and API based on the worker pool
-func (s *BaseHttpGateway) Refresh() error {
+func (s *BaseHttpGateway) refreshApis() {
 	s.apis = make([]string, 0)
-	// instansiate servers if not already done
-	if s.apiServers == nil {
-		s.apiServers = make([]*apiServer, 0)
-	}
 
 	workers := s.pool.GetWorkers(&pool.GetWorkerOptions{})
 	uniqApis := lo.Reduce(workers, func(agg []string, w worker.Worker, idx int) []string {
@@ -299,8 +318,41 @@ func (s *BaseHttpGateway) Refresh() error {
 	sort.Strings(uniqApis)
 
 	s.apis = append(s.apis, uniqApis...)
+}
 
-	for len(s.apiServers) < len(s.apis) {
+func (s *BaseHttpGateway) refreshHttpWorkers() {
+	s.httpWorkers = make([]int, 0)
+
+	workers := s.pool.GetWorkers(&pool.GetWorkerOptions{})
+	uniqHttpWorkers := lo.Reduce(workers, func(agg []int, w worker.Worker, idx int) []int {
+		if http, ok := w.(*worker.HttpWorker); ok {
+			if !lo.Contains(agg, http.GetPort()) {
+				agg = append(agg, http.GetPort())
+			}
+		}
+
+		return agg
+	}, []int{})
+
+	// sort the Http Worker Ports lowest to highest
+	sort.Ints(uniqHttpWorkers)
+
+	s.httpWorkers = append(s.httpWorkers, uniqHttpWorkers...)
+}
+
+// Update the gateway and API based on the worker pool
+func (s *BaseHttpGateway) Refresh() error {
+	s.refreshApis()
+
+	s.refreshHttpWorkers()
+
+	// instansiate servers if not done
+	if s.apiServers == nil {
+		s.apiServers = make([]*apiServer, 0)
+	}
+
+	// create an api server for every API and HTTP worker
+	for len(s.apiServers) < len(s.apis)+len(s.httpWorkers) {
 		fhttp := &fasthttp.Server{
 			ReadTimeout:     time.Second * 1,
 			IdleTimeout:     time.Second * 1,

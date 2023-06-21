@@ -60,6 +60,8 @@ func (s *Server) TriggerStream(stream v1.FaasService_TriggerStreamServer) error 
 		return s.function.AddSubscriptionHandler(w.Subscription)
 	case *v1.InitRequest_BucketNotification:
 		return s.function.AddBucketNotificationHandler(w.BucketNotification)
+	case *v1.InitRequest_HttpWorker:
+		return s.function.AddHttpWorker(w.HttpWorker)
 	default:
 		return utils.NewIncompatibleWorkerError()
 	}

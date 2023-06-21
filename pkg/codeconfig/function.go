@@ -114,6 +114,7 @@ type FunctionDependencies struct {
 	apis                map[string]*Api
 	subscriptions       map[string]*v1.SubscriptionWorker
 	schedules           map[string]*v1.ScheduleWorker
+	httpWorkers         map[int]*v1.HttpWorker
 	buckets             map[string]*v1.BucketResource
 	topics              map[string]*v1.TopicResource
 	collections         map[string]*v1.CollectionResource
@@ -169,6 +170,10 @@ func (a *FunctionDependencies) AddApiHandler(aw *v1.ApiWorker) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
+	if len(a.httpWorkers) > 0 {
+		return fmt.Errorf("APIs cannot be defined in functions that already contain HTTP proxies")
+	}
+
 	if a.apis[aw.Api] == nil {
 		a.apis[aw.Api] = newApi()
 	}
@@ -200,7 +205,7 @@ func (a *FunctionDependencies) WorkerCount() int {
 		workerCount = workerCount + len(v.workers)
 	}
 
-	workerCount = workerCount + len(a.subscriptions) + len(a.schedules) + len(a.bucketNotifications)
+	workerCount = workerCount + len(a.subscriptions) + len(a.schedules) + len(a.bucketNotifications) + len(a.httpWorkers)
 
 	return workerCount
 }
@@ -219,6 +224,25 @@ func (a *FunctionDependencies) AddScheduleHandler(sw *v1.ScheduleWorker) error {
 	return nil
 }
 
+// AddHttpWorker - registers a handler in the function that listens on a port
+func (a *FunctionDependencies) AddHttpWorker(hw *v1.HttpWorker) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if len(a.apis) > 0 {
+		return fmt.Errorf("HTTP proxies cannot be defined in functions that already contain APIs")
+	}
+
+	if a.httpWorkers[int(hw.Port)] != nil {
+		return fmt.Errorf("http worker already exists on port %d", hw.Port)
+	}
+
+	a.httpWorkers[int(hw.GetPort())] = hw
+
+	return nil
+}
+
+// AddBucketNotificationHandler - registers a handler in the function that is triggered by bucket events
 func (a *FunctionDependencies) AddBucketNotificationHandler(nw *v1.BucketNotificationWorker) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
@@ -272,6 +296,7 @@ func NewFunction(name string) *FunctionDependencies {
 		name:                name,
 		apis:                make(map[string]*Api),
 		subscriptions:       make(map[string]*v1.SubscriptionWorker),
+		httpWorkers:         make(map[int]*v1.HttpWorker),
 		schedules:           make(map[string]*v1.ScheduleWorker),
 		buckets:             make(map[string]*v1.BucketResource),
 		topics:              make(map[string]*v1.TopicResource),

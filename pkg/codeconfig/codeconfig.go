@@ -69,11 +69,16 @@ type BucketNotification struct {
 	NotificationPrefixFilter string `json:"notificationPrefixFilter,omitempty"`
 }
 
+type HttpWorker struct {
+	Port int `json:"port,omitempty"`
+}
+
 type SpecResult struct {
 	Apis                []*openapi3.T
 	Schedules           []*TopicResult
 	Topics              []*TopicResult
 	BucketNotifications []*BucketNotification
+	HttpWorkers         []*HttpWorker
 }
 
 func New(p *project.Project, envMap map[string]string) (*codeConfig, error) {
@@ -137,6 +142,7 @@ func (c *codeConfig) SpecFromWorkerPool(pool pool.WorkerPool) (*SpecResult, erro
 	schedules := []*TopicResult{}
 	topics := []*TopicResult{}
 	bucketNotifications := []*BucketNotification{}
+	httpWorkers := []*HttpWorker{}
 
 	// transform worker pool into apiHandlers
 	for _, wrkr := range pool.GetWorkers(nil) {
@@ -185,6 +191,10 @@ func (c *codeConfig) SpecFromWorkerPool(pool pool.WorkerPool) (*SpecResult, erro
 				NotificationType:         w.NotificationType().String(),
 				NotificationPrefixFilter: w.NotificationPrefixFilter(),
 			})
+		case *worker.HttpWorker:
+			httpWorkers = append(httpWorkers, &HttpWorker{
+				Port: w.GetPort(),
+			})
 		default:
 			return nil, utils.NewIncompatibleWorkerError()
 		}
@@ -220,11 +230,16 @@ func (c *codeConfig) SpecFromWorkerPool(pool pool.WorkerPool) (*SpecResult, erro
 		return bucketNotifications[i].Bucket < bucketNotifications[j].Bucket
 	})
 
+	sort.Slice(httpWorkers, func(i, j int) bool {
+		return i < j
+	})
+
 	return &SpecResult{
 		Apis:                apiSpecs,
 		Schedules:           schedules,
 		BucketNotifications: bucketNotifications,
 		Topics:              topics,
+		HttpWorkers:         httpWorkers,
 	}, nil
 }
 

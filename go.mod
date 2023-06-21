@@ -2,6 +2,11 @@ module github.com/nitrictech/cli
 
 go 1.19
 
+replace (
+	github.com/nitrictech/nitric/cloud/aws v0.0.0-20230531033433-9b7850becaa7 => ../nitric/cloud/aws
+	github.com/nitrictech/nitric/core v0.0.0-20230531033433-9b7850becaa7 => ../nitric/core
+)
+
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible

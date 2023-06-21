@@ -38,6 +38,7 @@ type RunStackState struct {
 	subs                map[string]string
 	schedules           map[string]string
 	bucketNotifications []*BucketNotification
+	httpWorkers         map[int]string
 }
 
 func (r *RunStackState) Update(workerPool pool.WorkerPool, ls LocalServices) {
@@ -46,9 +47,14 @@ func (r *RunStackState) Update(workerPool pool.WorkerPool, ls LocalServices) {
 	r.subs = make(map[string]string)
 	r.schedules = make(map[string]string)
 	r.bucketNotifications = []*BucketNotification{}
+	r.httpWorkers = make(map[int]string)
 
 	for name, address := range ls.Apis() {
 		r.apis[name] = address
+	}
+
+	for port, address := range ls.HttpWorkers() {
+		r.httpWorkers[port] = address
 	}
 
 	// TODO: We can probably move this directly into local service state
@@ -77,17 +83,22 @@ func (r *RunStackState) Tables(port int, dashPort int) string {
 		tables = append(tables, table)
 	}
 
-	table, rows = r.TopicTable(9001)
+	table, rows = r.TopicTable()
 	if rows > 0 {
 		tables = append(tables, table)
 	}
 
-	table, rows = r.SchedulesTable(9001)
+	table, rows = r.SchedulesTable()
 	if rows > 0 {
 		tables = append(tables, table)
 	}
 
-	table, rows = r.BucketNotificationsTable(9001)
+	table, rows = r.BucketNotificationsTable()
+	if rows > 0 {
+		tables = append(tables, table)
+	}
+
+	table, rows = r.HttpTable()
 	if rows > 0 {
 		tables = append(tables, table)
 	}
@@ -111,7 +122,7 @@ func (r *RunStackState) ApiTable(port int) (string, int) {
 	return str, len(r.apis)
 }
 
-func (r *RunStackState) TopicTable(port int) (string, int) {
+func (r *RunStackState) TopicTable() (string, int) {
 	tableData := pterm.TableData{{"Topic", "Endpoint"}}
 
 	for k, address := range r.subs {
@@ -125,7 +136,7 @@ func (r *RunStackState) TopicTable(port int) (string, int) {
 	return str, len(r.subs)
 }
 
-func (r *RunStackState) SchedulesTable(port int) (string, int) {
+func (r *RunStackState) SchedulesTable() (string, int) {
 	tableData := pterm.TableData{{"Schedule", "Endpoint"}}
 
 	for k, address := range r.schedules {
@@ -139,7 +150,21 @@ func (r *RunStackState) SchedulesTable(port int) (string, int) {
 	return str, len(r.schedules)
 }
 
-func (r *RunStackState) BucketNotificationsTable(port int) (string, int) {
+func (r *RunStackState) HttpTable() (string, int) {
+	tableData := pterm.TableData{{"Proxy", "Endpoint"}}
+
+	for port, address := range r.httpWorkers {
+		tableData = append(tableData, []string{
+			fmt.Sprintf("%d", port), fmt.Sprintf("http://%s", address),
+		})
+	}
+
+	str, _ := pterm.DefaultTable.WithHasHeader().WithData(tableData).Srender()
+
+	return str, len(r.httpWorkers)
+}
+
+func (r *RunStackState) BucketNotificationsTable() (string, int) {
 	tableData := pterm.TableData{{"Bucket", "Notification Type", "Notification Prefix Filter"}}
 
 	for _, notification := range r.bucketNotifications {
@@ -167,5 +192,6 @@ func NewStackState() *RunStackState {
 		subs:                map[string]string{},
 		schedules:           map[string]string{},
 		bucketNotifications: []*BucketNotification{},
+		httpWorkers:         map[int]string{},
 	}
 }

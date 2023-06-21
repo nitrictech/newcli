@@ -37,6 +37,7 @@ type LocalServices interface {
 	Status() *LocalServicesStatus
 	Refresh() error
 	Apis() map[string]string
+	HttpWorkers() map[int]string
 	TriggerAddress() string
 	GetWorkerPool() pool.WorkerPool
 	GetDashPort() *int
@@ -121,6 +122,14 @@ func (l *localServices) Running() bool {
 func (l *localServices) Apis() map[string]string {
 	if l.gateway != nil {
 		return l.gateway.GetApiAddresses()
+	}
+
+	return nil
+}
+
+func (l *localServices) HttpWorkers() map[int]string {
+	if l.gateway != nil {
+		return l.gateway.GetHttpWorkerAddresses()
 	}
 
 	return nil
