@@ -111,6 +111,7 @@ func (a *Api) AddSecurity(name string, scopes []string) {
 // FunctionDependencies - Stores information about a Nitric Function, and it's dependencies
 type FunctionDependencies struct {
 	name                string
+	handler             string
 	apis                map[string]*Api
 	subscriptions       map[string]*v1.SubscriptionWorker
 	schedules           map[string]*v1.ScheduleWorker
@@ -122,7 +123,12 @@ type FunctionDependencies struct {
 	policies            []*v1.PolicyResource
 	secrets             map[string]*v1.SecretResource
 	bucketNotifications map[string][]*v1.BucketNotificationWorker
+	errors              []string
 	lock                sync.RWMutex
+}
+
+func (a *FunctionDependencies) AddError(err string) {
+	a.errors = append(a.errors, fmt.Sprintf("function %s: %s", a.handler, err))
 }
 
 // AddPolicy - Adds an access policy dependency to the function
@@ -166,36 +172,35 @@ func (a *FunctionDependencies) AddApiSecurity(name string, security map[string]*
 	}
 }
 
-func (a *FunctionDependencies) AddApiHandler(aw *v1.ApiWorker) error {
+func (a *FunctionDependencies) AddApiHandler(aw *v1.ApiWorker) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	if len(a.httpWorkers) > 0 {
-		return fmt.Errorf("APIs cannot be defined in functions that already contain HTTP proxies")
+		a.AddError("APIs cannot be defined in functions that already contain HTTP proxies")
+		return
 	}
 
 	if a.apis[aw.Api] == nil {
 		a.apis[aw.Api] = newApi()
 	}
 
-	return a.apis[aw.Api].AddWorker(aw)
+	a.apis[aw.Api].AddWorker(aw)
 }
 
 // AddSubscriptionHandler - registers a handler in the function that subscribes to a topic of events
-func (a *FunctionDependencies) AddSubscriptionHandler(sw *v1.SubscriptionWorker) error {
+func (a *FunctionDependencies) AddSubscriptionHandler(sw *v1.SubscriptionWorker) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	// TODO: Determine if this subscription handler has a write policy to the same topic
 	if a.subscriptions[sw.Topic] != nil {
 		// return a new error
-		return fmt.Errorf("subscription already declared for topic %s, only one subscription per topic is allowed per application", sw.Topic)
+		a.AddError(fmt.Sprintf("declared multiple subscriptions for topic %s, only one subscription per topic is allowed per function", sw.Topic))
+		return
 	}
 
-	// This maps to a trigger worker for this application
 	a.subscriptions[sw.Topic] = sw
-
-	return nil
 }
 
 func (a *FunctionDependencies) WorkerCount() int {
@@ -211,51 +216,49 @@ func (a *FunctionDependencies) WorkerCount() int {
 }
 
 // AddScheduleHandler - registers a handler in the function that runs on a schedule
-func (a *FunctionDependencies) AddScheduleHandler(sw *v1.ScheduleWorker) error {
+func (a *FunctionDependencies) AddScheduleHandler(sw *v1.ScheduleWorker) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	if a.schedules[sw.Key] != nil {
-		return fmt.Errorf("schedule %s already exists", sw.Key)
+		a.AddError(fmt.Sprintf("declared schedule %s multiple times", sw.Key))
+		return
 	}
 
 	a.schedules[sw.GetKey()] = sw
-
-	return nil
 }
 
 // AddHttpWorker - registers a handler in the function that listens on a port
-func (a *FunctionDependencies) AddHttpWorker(hw *v1.HttpWorker) error {
+func (a *FunctionDependencies) AddHttpWorker(hw *v1.HttpWorker) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	if len(a.apis) > 0 {
-		return fmt.Errorf("HTTP proxies cannot be defined in functions that already contain APIs")
+		a.AddError("declared a HTTP Proxy, but already declares an API. Function can only handle one")
+		return
 	}
 
 	if a.httpWorkers[int(hw.Port)] != nil {
-		return fmt.Errorf("http worker already exists on port %d", hw.Port)
+		a.AddError(fmt.Sprintf("declared HTTP proxies with conflicting port %d", hw.Port))
+		return
 	}
 
 	a.httpWorkers[int(hw.GetPort())] = hw
-
-	return nil
 }
 
 // AddBucketNotificationHandler - registers a handler in the function that is triggered by bucket events
-func (a *FunctionDependencies) AddBucketNotificationHandler(nw *v1.BucketNotificationWorker) error {
+func (a *FunctionDependencies) AddBucketNotificationHandler(nw *v1.BucketNotificationWorker) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	a.bucketNotifications[nw.GetBucket()] = append(a.bucketNotifications[nw.GetBucket()], nw)
-
-	return nil
 }
 
 // AddBucket - adds a storage bucket dependency to the function
 func (a *FunctionDependencies) AddBucket(name string, b *v1.BucketResource) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
+
 	a.buckets[name] = b
 }
 
@@ -291,9 +294,10 @@ func (a *FunctionDependencies) AddSecret(name string, s *v1.SecretResource) {
 }
 
 // NewFunction - creates a new Nitric Function, ready to register handlers and dependencies.
-func NewFunction(name string) *FunctionDependencies {
+func NewFunction(name string, handler string) *FunctionDependencies {
 	return &FunctionDependencies{
 		name:                name,
+		handler:             handler,
 		apis:                make(map[string]*Api),
 		subscriptions:       make(map[string]*v1.SubscriptionWorker),
 		httpWorkers:         make(map[int]*v1.HttpWorker),
@@ -305,5 +309,6 @@ func NewFunction(name string) *FunctionDependencies {
 		secrets:             make(map[string]*v1.SecretResource),
 		bucketNotifications: make(map[string][]*v1.BucketNotificationWorker),
 		policies:            make([]*v1.PolicyResource, 0),
+		errors:              []string{},
 	}
 }

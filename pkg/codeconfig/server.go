@@ -22,7 +22,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/nitrictech/cli/pkg/utils"
 	v1 "github.com/nitrictech/nitric/core/pkg/api/nitric/v1"
 )
 
@@ -53,18 +52,20 @@ func (s *Server) TriggerStream(stream v1.FaasService_TriggerStreamServer) error 
 
 	switch w := ir.Worker.(type) {
 	case *v1.InitRequest_Api:
-		return s.function.AddApiHandler(w.Api)
+		s.function.AddApiHandler(w.Api)
 	case *v1.InitRequest_Schedule:
-		return s.function.AddScheduleHandler(w.Schedule)
+		s.function.AddScheduleHandler(w.Schedule)
 	case *v1.InitRequest_Subscription:
-		return s.function.AddSubscriptionHandler(w.Subscription)
+		s.function.AddSubscriptionHandler(w.Subscription)
 	case *v1.InitRequest_BucketNotification:
-		return s.function.AddBucketNotificationHandler(w.BucketNotification)
+		s.function.AddBucketNotificationHandler(w.BucketNotification)
 	case *v1.InitRequest_HttpWorker:
-		return s.function.AddHttpWorker(w.HttpWorker)
+		s.function.AddHttpWorker(w.HttpWorker)
 	default:
-		return utils.NewIncompatibleWorkerError()
+		s.function.AddError("declared unknown worker type, your CLI version may be out of date with your SDK version")
 	}
+
+	return nil
 }
 
 // Declare - Accepts resource declarations, adding them as dependencies to the Function
