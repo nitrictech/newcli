@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/nitrictech/cli/pkg/preview"
+	"github.com/nitrictech/cli/pkg/project"
 	"github.com/nitrictech/cli/pkg/utils"
 	v1 "github.com/nitrictech/nitric/core/pkg/api/nitric/v1"
 )
@@ -112,6 +114,7 @@ func (a *Api) AddSecurity(name string, scopes []string) {
 type FunctionDependencies struct {
 	name                string
 	handler             string
+	project             *project.Project
 	apis                map[string]*Api
 	subscriptions       map[string]*v1.SubscriptionWorker
 	schedules           map[string]*v1.ScheduleWorker
@@ -233,6 +236,15 @@ func (a *FunctionDependencies) AddHttpWorker(hw *v1.HttpWorker) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
+	if !a.project.IsPreviewFeatureEnabled(preview.Feature_Http) {
+		a.AddError(`HTTP Proxies are currently in preview if you would like to enable them add
+preview-features:
+  - http
+to your nitric.yaml file.
+		`)
+		return
+	}
+
 	if len(a.apis) > 0 {
 		a.AddError("declared a HTTP Proxy, but already declares an API. Function can only handle one")
 		return
@@ -294,10 +306,11 @@ func (a *FunctionDependencies) AddSecret(name string, s *v1.SecretResource) {
 }
 
 // NewFunction - creates a new Nitric Function, ready to register handlers and dependencies.
-func NewFunction(name string, handler string) *FunctionDependencies {
+func NewFunction(project *project.Project, name string, handler string) *FunctionDependencies {
 	return &FunctionDependencies{
 		name:                name,
 		handler:             handler,
+		project:             project,
 		apis:                make(map[string]*Api),
 		subscriptions:       make(map[string]*v1.SubscriptionWorker),
 		httpWorkers:         make(map[int]*v1.HttpWorker),

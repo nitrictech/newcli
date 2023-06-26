@@ -462,7 +462,7 @@ func (c *codeConfig) collectOne(handler string) error {
 	}
 
 	name := rt.ContainerName()
-	fun := NewFunction(name, handler)
+	fun := NewFunction(c.initialProject, name, handler)
 
 	srv := NewServer(name, fun)
 	grpcSrv := grpc.NewServer()

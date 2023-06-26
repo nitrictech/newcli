@@ -20,4 +20,5 @@ type Feature = string
 
 const (
 	Feature_Websockets Feature = "websockets"
+	Feature_Http       Feature = "http"
 )
