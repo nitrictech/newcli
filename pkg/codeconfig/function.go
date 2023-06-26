@@ -245,13 +245,12 @@ to your nitric.yaml file.
 		return
 	}
 
-	if len(a.apis) > 0 {
-		a.AddError("declared a HTTP Proxy, but already declares an API. Function can only handle one")
-		return
+	if a.httpWorkers != nil {
+		a.AddError("declared multiple http proxies, only one http proxy is allowed per function")
 	}
 
-	if a.httpWorkers[int(hw.Port)] != nil {
-		a.AddError(fmt.Sprintf("declared HTTP proxies with conflicting port %d", hw.Port))
+	if len(a.apis) > 0 {
+		a.AddError("declared a HTTP Proxy, but already declares an API. Function can only handle one")
 		return
 	}
 
