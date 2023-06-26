@@ -152,7 +152,7 @@ var runCmd = &cobra.Command{
 
 		pterm.DefaultBasicText.Println("Application running, use ctrl-C to stop")
 
-		stackState := run.NewStackState()
+		stackState := run.NewStackState(proj)
 
 		err = ls.Refresh()
 		if err != nil {
@@ -178,6 +178,10 @@ var runCmd = &cobra.Command{
 				stackState.Update(pool, ls)
 
 				area.Update(stackState.Tables(9001, *ls.GetDashPort()))
+
+				for _, warning := range stackState.Warnings() {
+					pterm.Warning.Println(warning)
+				}
 			})
 		})
 

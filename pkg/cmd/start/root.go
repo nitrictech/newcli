@@ -108,7 +108,7 @@ var startCmd = &cobra.Command{
 
 		pterm.DefaultBasicText.Println("Local running, use ctrl-C to stop")
 
-		stackState := run.NewStackState()
+		stackState := run.NewStackState(proj)
 
 		area, _ := pterm.DefaultArea.Start()
 		// Create a debouncer for the refresh and remove locking
@@ -125,6 +125,10 @@ var startCmd = &cobra.Command{
 				stackState.Update(pool, ls)
 
 				area.Update(stackState.Tables(9001, *ls.GetDashPort()))
+
+				for _, warning := range stackState.Warnings() {
+					pterm.Warning.Println(warning)
+				}
 			})
 		})
 

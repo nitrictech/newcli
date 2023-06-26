@@ -22,6 +22,8 @@ import (
 
 	"github.com/pterm/pterm"
 
+	"github.com/nitrictech/cli/pkg/preview"
+	"github.com/nitrictech/cli/pkg/project"
 	v1 "github.com/nitrictech/nitric/core/pkg/api/nitric/v1"
 	"github.com/nitrictech/nitric/core/pkg/worker"
 	"github.com/nitrictech/nitric/core/pkg/worker/pool"
@@ -34,6 +36,7 @@ type BucketNotification struct {
 }
 
 type RunStackState struct {
+	project             *project.Project
 	apis                map[string]string
 	subs                map[string]string
 	schedules           map[string]string
@@ -73,6 +76,16 @@ func (r *RunStackState) Update(workerPool pool.WorkerPool, ls LocalServices) {
 			})
 		}
 	}
+}
+
+func (r *RunStackState) Warnings() []string {
+	warnings := []string{}
+
+	if !r.project.IsPreviewFeatureEnabled(preview.Feature_Http) && len(r.httpWorkers) > 0 {
+		warnings = append(warnings, "You are using a preview feature 'http' before deploying you will need to enable this in your project file.")
+	}
+
+	return warnings
 }
 
 func (r *RunStackState) Tables(port int, dashPort int) string {
@@ -186,8 +199,9 @@ func (r *RunStackState) DashboardTable(port int) string {
 	return str
 }
 
-func NewStackState() *RunStackState {
+func NewStackState(proj *project.Project) *RunStackState {
 	return &RunStackState{
+		project:             proj,
 		apis:                map[string]string{},
 		subs:                map[string]string{},
 		schedules:           map[string]string{},
