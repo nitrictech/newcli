@@ -73,7 +73,7 @@ func BuildBaseImages(s *project.Project) error {
 		})
 
 		if err := ce.Build(filepath.Base(f.Name()), s.Dir, fmt.Sprintf("%s-%s", s.Name, fun.Name), rt.BuildArgs(), rt.BuildIgnore(ignoreHandlers...)); err != nil {
-			return err
+			return fmt.Errorf("error building function %s:\n%w", fun.Handler, err)
 		}
 	}
 
