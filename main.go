@@ -16,8 +16,23 @@
 
 package main
 
-import "github.com/nitrictech/cli/pkg/cmd"
+import (
+	"fmt"
+
+	"github.com/nitrictech/cli/pkg/cmd"
+	"github.com/nitrictech/cli/pkg/ghissue"
+	"github.com/pterm/pterm"
+)
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			// We've recovered from a panic, let's provide the stack but a cleaner error message
+			link := ghissue.BugLink(fmt.Errorf("an unhandled panic occurred"))
+
+			pterm.Error.Printfln("Looks like you've hit a bug in the nitric CLI, you can raise an issue for the using the following link: %s", link)
+		}
+	}()
+
 	cmd.Execute()
 }
