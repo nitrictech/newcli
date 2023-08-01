@@ -30,8 +30,8 @@ require (
 	github.com/missionMeteora/toolkit v0.0.0-20170713173850-88364e3ef8cc
 	github.com/moby/moby v20.10.22+incompatible
 	github.com/nitrictech/go-mods-direct v0.0.0-20221212215233-12bba0c74a7f
-	github.com/nitrictech/nitric/cloud/aws v0.0.0-20230718015326-80e1b8640347
-	github.com/nitrictech/nitric/core v0.0.0-20230718015326-80e1b8640347
+	github.com/nitrictech/nitric/cloud/aws v0.0.0-20230801003709-858c1c1b0633
+	github.com/nitrictech/nitric/core v0.0.0-20230801003709-858c1c1b0633
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.54
 	github.com/spf13/cobra v1.7.0

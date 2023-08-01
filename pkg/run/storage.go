@@ -153,6 +153,15 @@ func (r *RunStorageService) ListFiles(ctx context.Context, bucket string, option
 	return r.StorageService.ListFiles(ctx, bucket, nil)
 }
 
+func (r *RunStorageService) Exists(ctx context.Context, bucket string, key string) (bool, error) {
+	err := r.ensureBucketExists(ctx, bucket)
+	if err != nil {
+		return false, err
+	}
+
+	return r.StorageService.Exists(ctx, bucket, key)
+}
+
 func (r *RunStorageService) PreSignUrl(ctx context.Context, bucket string, key string, operation storage.Operation, expiry uint32) (string, error) {
 	err := r.ensureBucketExists(ctx, bucket)
 	if err != nil {
