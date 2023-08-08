@@ -278,30 +278,21 @@ func (c *codeConfig) ToUpRequest() (*deploy.DeployUpRequest, error) {
 			return principals + "-" + actions
 		})
 
-		compactedPolicies := []*v1.PolicyResource{}
+		compactedPolicies := map[string]*v1.PolicyResource{}
 		// for each key of the compacted policies we want to make a single policy object that appends all of the policies resources together
-		for _, pols := range compactedPoliciesByKey {
+		for k, pols := range compactedPoliciesByKey {
 			newPol := pols[0]
 
 			for _, pol := range pols[1:] {
 				newPol.Resources = append(newPol.Resources, pol.Resources...)
 			}
 
-			compactedPolicies = append(compactedPolicies, newPol)
+			policyName := md5Hash([]byte(k))
+
+			compactedPolicies[policyName] = newPol
 		}
 
-		dedupedPolicies := map[string]*v1.PolicyResource{}
-
-		for _, v := range compactedPolicies {
-			policyName, err := policyResourceName(v)
-			if err != nil {
-				return nil, err
-			}
-
-			dedupedPolicies[policyName] = v
-		}
-
-		for policyName, v := range dedupedPolicies {
+		for policyName, v := range compactedPolicies {
 			principals := []*deploy.Resource{}
 			resources := []*deploy.Resource{}
 
