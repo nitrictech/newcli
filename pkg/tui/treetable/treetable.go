@@ -33,7 +33,7 @@ func renderColumns[T any](tree ...Tree[T]) []table.Column {
 func renderRow[T any](depth int, node *Node[T]) table.Row {
 	return table.Row{
 		// Render the left-most column with a margin that matches the depth
-		lipgloss.NewStyle().SetString("˪").MarginLeft(depth).Render(),
+		lipgloss.NewStyle().SetString("├─").MarginLeft(depth).Render(),
 	}
 }
 
