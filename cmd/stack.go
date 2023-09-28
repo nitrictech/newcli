@@ -117,7 +117,12 @@ var stackUpdateCmd = &cobra.Command{
 			utils.CheckErr(err)
 		}
 
-		stack_update.Run(envFile, s, forceStack)
+		stack_update.Run(stack_update.Args{
+			EnvFile:     envFile,
+			Stack:       s,
+			Force:       forceStack,
+			Interactive: !output.CI,
+		})
 	},
 	Args:    cobra.MinimumNArgs(0),
 	Aliases: []string{"up"},
@@ -146,7 +151,9 @@ nitric stack down -s aws -y`,
 			}
 		}
 
-		stack_delete.Run()
+		stack_delete.Run(stack_delete.Args{
+			Interactive: !output.CI,
+		})
 	},
 	Args: cobra.ExactArgs(0),
 }

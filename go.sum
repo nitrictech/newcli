@@ -1657,6 +1657,8 @@ github.com/nitrictech/nitric/cloud/common v0.0.0-20230710061936-f8ccb102d31b h1:
 github.com/nitrictech/nitric/cloud/common v0.0.0-20230710061936-f8ccb102d31b/go.mod h1:nz8/tXPMb5o2yv8g4+NsvDu0dPyrY6iZyXZ1EprenlM=
 github.com/nitrictech/nitric/core v0.0.0-20230718015326-80e1b8640347 h1:5c6IDgweLzybxniL9OkTdk9AvheDP2F6p1sFOGteICI=
 github.com/nitrictech/nitric/core v0.0.0-20230718015326-80e1b8640347/go.mod h1:iz/seHApmfpML52NVjankr+9izPddUUwZHdcSQEvm9E=
+github.com/nitrictech/nitric/core v0.0.0-20230928000037-7261774edded h1:Nm+S/GAnvKJfQHu75MY7o5LIJUukiM4WNnFj43gb2OA=
+github.com/nitrictech/nitric/core v0.0.0-20230928000037-7261774edded/go.mod h1:iz/seHApmfpML52NVjankr+9izPddUUwZHdcSQEvm9E=
 github.com/nitrictech/pearls v0.0.0-20230927035425-dc9ec468bb24 h1:Jb61oiwZoyMDqmLzNdgHjKYDLtDmbeb4GYEGSK/ZqgA=
 github.com/nitrictech/pearls v0.0.0-20230927035425-dc9ec468bb24/go.mod h1:IXCOsqYAR5KRqXbbXnHkMp9NJrfY0qOeV3IcbBR5uSA=
 github.com/nitrictech/protoutils v0.0.0-20220321044654-02667a814cdf h1:8MB8W8ylM8sCM2COGfiO39/tB6BTdiawLszaUGCNL5w=

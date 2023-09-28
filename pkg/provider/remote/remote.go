@@ -18,6 +18,7 @@ package remote
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/pkg/errors"
@@ -32,9 +33,10 @@ import (
 )
 
 type remoteDeployment struct {
-	cfc     types.ConfigFromCode
-	sfc     *StackConfig
-	address string
+	cfc         types.ConfigFromCode
+	sfc         *StackConfig
+	address     string
+	interactive bool
 }
 
 var _ types.Provider = &remoteDeployment{}
@@ -68,7 +70,7 @@ func (p *remoteDeployment) dialConnection() (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func (p *remoteDeployment) Up(log output.Progress) (*types.Deployment, error) {
+func (p *remoteDeployment) Up() (*types.Deployment, error) {
 	conn, err := p.dialConnection()
 	if err != nil {
 		return nil, err
@@ -79,6 +81,8 @@ func (p *remoteDeployment) Up(log output.Progress) (*types.Deployment, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	req.Interactive = p.interactive
 
 	attributes := map[string]any{}
 
@@ -118,12 +122,11 @@ func (p *remoteDeployment) Up(log output.Progress) (*types.Deployment, error) {
 
 		switch t := evt.Content.(type) {
 		case *deploy.DeployUpEvent_Message:
-			log.Debugf(t.Message.Message)
+			fmt.Print(t.Message.Message)
 		case *deploy.DeployUpEvent_Result:
 			if !t.Result.Success {
 				return res, errors.New("failed to deploy")
 			}
-
 			// Print the deployment output
 			pterm.Success.Print(t.Result.Result.GetStringResult())
 
@@ -132,7 +135,7 @@ func (p *remoteDeployment) Up(log output.Progress) (*types.Deployment, error) {
 	}
 }
 
-func (p *remoteDeployment) Down(log output.Progress) (*types.Summary, error) {
+func (p *remoteDeployment) Down() (*types.Summary, error) {
 	conn, err := p.dialConnection()
 	if err != nil {
 		return nil, err
@@ -154,7 +157,8 @@ func (p *remoteDeployment) Down(log output.Progress) (*types.Summary, error) {
 	}
 
 	req := &deploy.DeployDownRequest{
-		Attributes: reqAttributes,
+		Attributes:  reqAttributes,
+		Interactive: p.interactive,
 	}
 
 	client := deploy.NewDeployServiceClient(conn)
@@ -178,7 +182,7 @@ func (p *remoteDeployment) Down(log output.Progress) (*types.Summary, error) {
 
 		switch t := evt.Content.(type) {
 		case *deploy.DeployDownEvent_Message:
-			log.Debugf(t.Message.Message)
+			fmt.Print(t.Message.Message)
 		case *deploy.DeployDownEvent_Result: // TODO - handle errors
 			return res, nil
 		}

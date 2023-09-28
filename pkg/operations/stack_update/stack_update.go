@@ -18,6 +18,7 @@ package stack_update
 
 import (
 	"log"
+	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/pterm/pterm"
@@ -33,7 +34,14 @@ import (
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
-func Run(envFile string, s *stack.Config, force bool) {
+type Args struct {
+	EnvFile     string
+	Stack       *stack.Config
+	Force       bool
+	Interactive bool
+}
+
+func Run(args Args) {
 	config, err := project.ConfigFromProjectPath("")
 	utils.CheckErr(err)
 
@@ -43,7 +51,7 @@ func Run(envFile string, s *stack.Config, force bool) {
 	log.SetOutput(output.NewPtermWriter(pterm.Debug))
 	log.SetFlags(0)
 
-	envFiles := utils.FilesExisting(".env", ".env.production", envFile)
+	envFiles := utils.FilesExisting(".env", ".env.production", args.EnvFile)
 
 	envMap := map[string]string{}
 
@@ -74,20 +82,23 @@ func Run(envFile string, s *stack.Config, force bool) {
 	}
 	tasklet.MustRun(codeAsConfig, tasklet.Opts{})
 
-	p, err := provider.ProviderFromFile(cc, s.Name, s.Provider, envMap, &types.ProviderOpts{Force: force})
+	p, err := provider.ProviderFromFile(cc, args.Stack.Name, args.Stack.Provider, envMap, &types.ProviderOpts{Force: args.Force, Interactive: args.Interactive})
 	utils.CheckErr(err)
 
 	d := &types.Deployment{}
-	deploy := tasklet.Runner{
-		StartMsg: "Deploying..",
-		Runner: func(progress output.Progress) error {
-			d, err = p.Up(progress)
+	d, err = p.Up()
 
-			return err
-		},
-		StopMsg: "Stack",
+	if err != nil {
+		os.Exit(1)
 	}
-	tasklet.MustRun(deploy, tasklet.Opts{SuccessPrefix: "Deployed"})
+	// deploy := tasklet.Runner{
+	// 	StartMsg: "Deploying..",
+	// 	Runner: func(progress output.Progress) error {
+
+	// 	},
+	// 	StopMsg: "Stack",
+	// }
+	// tasklet.MustRun(deploy, tasklet.Opts{SuccessPrefix: "Deployed"})
 
 	// Print callable APIs if any were deployed
 	if len(d.ApiEndpoints) > 0 {

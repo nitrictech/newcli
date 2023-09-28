@@ -17,7 +17,6 @@
 package types
 
 import (
-	"github.com/nitrictech/cli/pkg/output"
 	deploy "github.com/nitrictech/nitric/core/pkg/api/nitric/deploy/v1"
 )
 
@@ -45,12 +44,13 @@ type Deployment struct {
 }
 
 type ProviderOpts struct {
-	Force bool
+	Force       bool
+	Interactive bool
 }
 
 type Provider interface {
-	Up(log output.Progress) (*Deployment, error)
-	Down(log output.Progress) (*Summary, error)
+	Up() (*Deployment, error)
+	Down() (*Summary, error)
 	List() (interface{}, error)
 	AskAndSave() error
 	SupportedRegions() []string

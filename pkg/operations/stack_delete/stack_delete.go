@@ -18,6 +18,7 @@ package stack_delete
 
 import (
 	"log"
+	"os"
 
 	"github.com/pterm/pterm"
 
@@ -27,11 +28,14 @@ import (
 	"github.com/nitrictech/cli/pkg/provider"
 	"github.com/nitrictech/cli/pkg/provider/types"
 	"github.com/nitrictech/cli/pkg/stack"
-	"github.com/nitrictech/cli/pkg/tasklet"
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
-func Run() {
+type Args struct {
+	Interactive bool
+}
+
+func Run(args Args) {
 	s, err := stack.ConfigFromOptions()
 	utils.CheckErr(err)
 
@@ -47,19 +51,12 @@ func Run() {
 	cc, err := codeconfig.New(proj, map[string]string{})
 	utils.CheckErr(err)
 
-	p, err := provider.ProviderFromFile(cc, s.Name, s.Provider, map[string]string{}, &types.ProviderOpts{Force: true})
+	p, err := provider.ProviderFromFile(cc, s.Name, s.Provider, map[string]string{}, &types.ProviderOpts{Force: true, Interactive: args.Interactive})
 	utils.CheckErr(err)
 
-	deploy := tasklet.Runner{
-		StartMsg: "Deleting..",
-		Runner: func(progress output.Progress) error {
-			_, err := p.Down(progress)
+	_, err = p.Down()
 
-			return err
-		},
-		StopMsg: "Stack",
+	if err != nil {
+		os.Exit(1)
 	}
-	tasklet.MustRun(deploy, tasklet.Opts{
-		SuccessPrefix: "Deleted",
-	})
 }

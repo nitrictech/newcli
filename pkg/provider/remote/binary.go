@@ -83,7 +83,7 @@ func (p *binaryRemoteDeployment) startProcess() (*os.Process, error) {
 	return cmd.Process, nil
 }
 
-func (p *binaryRemoteDeployment) Up(log output.Progress) (*types.Deployment, error) {
+func (p *binaryRemoteDeployment) Up() (*types.Deployment, error) {
 	// start the provider command
 	process, err := p.startProcess()
 	if err != nil {
@@ -92,10 +92,10 @@ func (p *binaryRemoteDeployment) Up(log output.Progress) (*types.Deployment, err
 
 	defer process.Kill() //nolint:errcheck
 
-	return p.remoteDeployment.Up(log)
+	return p.remoteDeployment.Up()
 }
 
-func (p *binaryRemoteDeployment) Down(log output.Progress) (*types.Summary, error) {
+func (p *binaryRemoteDeployment) Down() (*types.Summary, error) {
 	// start the provider command
 	process, err := p.startProcess()
 	if err != nil {
@@ -104,7 +104,7 @@ func (p *binaryRemoteDeployment) Down(log output.Progress) (*types.Summary, erro
 
 	defer process.Kill() //nolint:errcheck
 
-	return p.remoteDeployment.Down(log)
+	return p.remoteDeployment.Down()
 }
 
 func isExecAny(mode os.FileMode) bool {
@@ -155,8 +155,9 @@ func NewBinaryRemoteDeployment(cfc types.ConfigFromCode, sc *StackConfig, prov *
 	return &binaryRemoteDeployment{
 		providerPath: providerPath,
 		remoteDeployment: &remoteDeployment{
-			cfc: cfc,
-			sfc: sc,
+			cfc:         cfc,
+			sfc:         sc,
+			interactive: opts.Interactive,
 		},
 	}, nil
 }
