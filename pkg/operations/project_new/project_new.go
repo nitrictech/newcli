@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/spf13/afero"
+
 	"github.com/charmbracelet/bubbles/spinner"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -59,6 +61,7 @@ type Model struct {
 	spinner        spinner.Model
 	status         NewProjectStatus
 	nonInteractive bool
+	fs             afero.Fs
 
 	err error
 }
@@ -240,7 +243,7 @@ type Args struct {
 	TemplateName string
 }
 
-func New(args Args) Model {
+func New(fs afero.Fs, args Args) Model {
 	seed := time.Now().UTC().UnixNano()
 	nameGenerator := namegenerator.NewNameGenerator(seed)
 	placeholderName := nameGenerator.Generate()
@@ -334,7 +337,7 @@ func (m Model) createProject() tea.Cmd {
 		var p *project.Config
 
 		// Load and update the project name in the template's nitric.yaml
-		p, err = project.ConfigFromProjectPath(projDir)
+		p, err = project.ConfigFromProjectPath(m.fs, projDir)
 		utils.CheckErr(err)
 
 		p.Name = m.ProjectName()

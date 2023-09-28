@@ -28,6 +28,7 @@ import (
 	"github.com/bep/debounce"
 	"github.com/pkg/errors"
 	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/nitrictech/cli/pkg/dashboard"
@@ -39,7 +40,7 @@ import (
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
-func Run(ctx context.Context, noBrowser bool) {
+func Run(ctx context.Context, fs afero.Fs, noBrowser bool) {
 	term := make(chan os.Signal, 1)
 	signal.Notify(term, syscall.SIGTERM, syscall.SIGINT)
 
@@ -47,7 +48,7 @@ func Run(ctx context.Context, noBrowser bool) {
 	log.SetOutput(output.NewPtermWriter(pterm.Debug))
 	log.SetFlags(0)
 
-	config, err := project.ConfigFromProjectPath("")
+	config, err := project.ConfigFromProjectPath(fs, "")
 	utils.CheckErr(err)
 
 	history := &history.History{

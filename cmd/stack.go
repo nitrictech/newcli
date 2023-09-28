@@ -23,6 +23,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/nitrictech/cli/pkg/command"
@@ -82,7 +83,8 @@ var newStackCmd = &cobra.Command{
 	Short: "Create a new Nitric stack",
 	Long:  `Creates a new Nitric stack.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		err := stack_new.Run()
+		fs := afero.NewOsFs()
+		err := stack_new.Run(fs)
 
 		utils.CheckErr(err)
 	},
@@ -96,6 +98,7 @@ var stackUpdateCmd = &cobra.Command{
 	Long:    `Create or update a deployed stack`,
 	Example: `nitric stack update -s aws`,
 	Run: func(cmd *cobra.Command, args []string) {
+		fs := afero.NewOsFs()
 		s, err := stack.ConfigFromOptions()
 
 		if err != nil && strings.Contains(err.Error(), "No nitric stacks found") {
@@ -110,14 +113,14 @@ var stackUpdateCmd = &cobra.Command{
 				pterm.Info.Println("You can run `nitric stack new` to create a new stack.")
 				os.Exit(0)
 			}
-			err = stack_new.Run()
+			err = stack_new.Run(fs)
 			utils.CheckErr(err)
 
 			_, err = stack.ConfigFromOptions()
 			utils.CheckErr(err)
 		}
 
-		stack_update.Run(envFile, s, forceStack)
+		stack_update.Run(fs, envFile, s, forceStack)
 	},
 	Args:    cobra.MinimumNArgs(0),
 	Aliases: []string{"up"},
@@ -132,6 +135,7 @@ var stackDeleteCmd = &cobra.Command{
 # To not be prompted, use -y
 nitric stack down -s aws -y`,
 	Run: func(cmd *cobra.Command, args []string) {
+		fs := afero.NewOsFs()
 		if !confirmDown && !output.CI {
 			confirm := ""
 			err := survey.AskOne(&survey.Select{
@@ -146,7 +150,7 @@ nitric stack down -s aws -y`,
 			}
 		}
 
-		stack_delete.Run()
+		stack_delete.Run(fs)
 	},
 	Args: cobra.ExactArgs(0),
 }

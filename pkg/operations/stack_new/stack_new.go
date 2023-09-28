@@ -18,6 +18,7 @@ package stack_new
 
 import (
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/spf13/afero"
 
 	"github.com/nitrictech/cli/pkg/codeconfig"
 	"github.com/nitrictech/cli/pkg/project"
@@ -26,7 +27,7 @@ import (
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
-func Run() error {
+func Run(fs afero.Fs) error {
 	name := ""
 
 	err := survey.AskOne(&survey.Input{
@@ -47,7 +48,7 @@ func Run() error {
 		return err
 	}
 
-	pc, err := project.ConfigFromProjectPath("")
+	pc, err := project.ConfigFromProjectPath(fs, "")
 	if err != nil {
 		return err
 	}

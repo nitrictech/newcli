@@ -18,6 +18,7 @@ package cmd
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/nitrictech/cli/pkg/operations/project_new"
@@ -45,7 +46,9 @@ nitric new hello-world "official/TypeScript - Starter" `,
 			templateName = args[1]
 		}
 
-		if _, err := tea.NewProgram(project_new.New(project_new.Args{
+		fs := afero.NewOsFs()
+
+		if _, err := tea.NewProgram(project_new.New(fs, project_new.Args{
 			ProjectName:  projectName,
 			TemplateName: templateName,
 		}), tea.WithANSICompressor()).Run(); err != nil {

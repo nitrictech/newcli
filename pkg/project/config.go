@@ -19,6 +19,9 @@ package project
 import (
 	"fmt"
 	"os"
+
+	"github.com/spf13/afero"
+
 	"path/filepath"
 	"reflect"
 
@@ -56,6 +59,7 @@ type BaseConfig struct {
 type Config struct {
 	BaseConfig       `yaml:",inline"`
 	ConcreteHandlers []*HandlerConfig `yaml:"-"`
+	fs               *afero.Fs
 }
 
 func (p *Config) ToFile() error {
@@ -68,7 +72,7 @@ func (p *Config) ToFile() error {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(p.Dir, "nitric.yaml"), b, 0o644)
+	return afero.WriteFile(*p.fs, filepath.Join(p.Dir, "nitric.yaml"), b, 0o644)
 }
 
 // configFromBaseConfig - Unwraps Generic configs (e.g. Handler) and populates missing defaults (e.g. Type)
@@ -109,7 +113,7 @@ func configFromBaseConfig(base BaseConfig) (*Config, error) {
 }
 
 // ConfigFromProjectPath - loads the config nitric.yaml file from the project path, defaults to the current working directory
-func ConfigFromProjectPath(projPath string) (*Config, error) {
+func ConfigFromProjectPath(fs afero.Fs, projPath string) (*Config, error) {
 	if projPath == "" {
 		wd, err := os.Getwd()
 		if err != nil {
@@ -128,7 +132,7 @@ func ConfigFromProjectPath(projPath string) (*Config, error) {
 		Dir: absDir,
 	}
 
-	yamlFile, err := os.ReadFile(filepath.Join(projPath, "nitric.yaml"))
+	yamlFile, err := afero.ReadFile(fs, filepath.Join(projPath, "nitric.yaml"))
 	if err != nil {
 		return nil, errors.WithMessage(err, "No nitric project found (unable to find nitric.yaml). If you haven't created a project yet, run `nitric new` to get started")
 	}

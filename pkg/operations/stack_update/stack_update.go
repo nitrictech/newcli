@@ -21,6 +21,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 
 	"github.com/nitrictech/cli/pkg/build"
 	"github.com/nitrictech/cli/pkg/codeconfig"
@@ -33,8 +34,8 @@ import (
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
-func Run(envFile string, s *stack.Config, force bool) {
-	config, err := project.ConfigFromProjectPath("")
+func Run(fs afero.Fs, envFile string, s *stack.Config, force bool) {
+	config, err := project.ConfigFromProjectPath(fs, "")
 	utils.CheckErr(err)
 
 	proj, err := project.FromConfig(config)

@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/nitrictech/cli/pkg/command"
@@ -30,7 +31,8 @@ var runCmd = &cobra.Command{
 	Example:     `nitric run`,
 	Annotations: map[string]string{"commonCommand": "yes"},
 	Run: func(cmd *cobra.Command, args []string) {
-		local_run.Run(cmd.Context())
+		fs := afero.NewOsFs()
+		local_run.Run(cmd.Context(), fs)
 	},
 	Args: cobra.ExactArgs(0),
 }

@@ -20,6 +20,7 @@ import (
 	"log"
 
 	"github.com/pterm/pterm"
+	"github.com/spf13/afero"
 
 	"github.com/nitrictech/cli/pkg/codeconfig"
 	"github.com/nitrictech/cli/pkg/output"
@@ -31,14 +32,14 @@ import (
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
-func Run() {
+func Run(fs afero.Fs) {
 	s, err := stack.ConfigFromOptions()
 	utils.CheckErr(err)
 
 	log.SetOutput(output.NewPtermWriter(pterm.Debug))
 	log.SetFlags(0)
 
-	config, err := project.ConfigFromProjectPath("")
+	config, err := project.ConfigFromProjectPath(fs, "")
 	utils.CheckErr(err)
 
 	proj, err := project.FromConfig(config)
