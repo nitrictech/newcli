@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/pterm/pterm"
@@ -33,10 +34,12 @@ import (
 )
 
 type remoteDeployment struct {
-	cfc         types.ConfigFromCode
-	sfc         *StackConfig
-	address     string
-	interactive bool
+	cfc            types.ConfigFromCode
+	sfc            *StackConfig
+	address        string
+	interactive    bool
+	subscriberLock sync.RWMutex
+	subscribers    []chan types.Event
 }
 
 var _ types.Provider = &remoteDeployment{}
@@ -51,6 +54,21 @@ func (p *remoteDeployment) SupportedRegions() []string {
 
 func (p *remoteDeployment) List() (interface{}, error) {
 	return nil, errors.New("not supported for remote deployments")
+}
+
+func (p *remoteDeployment) Subscribe(sub chan types.Event) {
+	p.subscriberLock.Lock()
+	defer p.subscriberLock.Unlock()
+
+	p.subscribers = append(p.subscribers, sub)
+}
+
+func (p *remoteDeployment) notifySubscribers(evt types.Event) {
+	p.subscriberLock.RLock()
+	defer p.subscriberLock.RUnlock()
+	for _, sub := range p.subscribers {
+		sub <- evt
+	}
 }
 
 func (a *remoteDeployment) Preview(log output.Progress) (string, error) {
@@ -122,11 +140,23 @@ func (p *remoteDeployment) Up() (*types.Deployment, error) {
 
 		switch t := evt.Content.(type) {
 		case *deploy.DeployUpEvent_Message:
-			fmt.Print(t.Message.Message)
+			p.notifySubscribers(types.Event{
+				Progress: &types.ProgressMessage{
+					Content: t.Message.Message,
+				},
+			})
 		case *deploy.DeployUpEvent_Result:
+			p.notifySubscribers(types.Event{
+				Result: &types.ResultMessage{
+					Content: t.Result.Result.GetStringResult(),
+					Success: t.Result.Success,
+				},
+			})
+
 			if !t.Result.Success {
 				return res, errors.New("failed to deploy")
 			}
+
 			// Print the deployment output
 			pterm.Success.Print(t.Result.Result.GetStringResult())
 

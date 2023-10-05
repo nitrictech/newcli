@@ -51,6 +51,7 @@ type ProviderOpts struct {
 type Provider interface {
 	Up() (*Deployment, error)
 	Down() (*Summary, error)
+	Subscribe(chan Event)
 	List() (interface{}, error)
 	AskAndSave() error
 	SupportedRegions() []string

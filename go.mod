@@ -53,8 +53,10 @@ require (
 	github.com/charmbracelet/log v0.2.4
 	github.com/docker/distribution v2.8.0+incompatible
 	github.com/fasthttp/websocket v1.5.3
+	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/nitrictech/nitric/cloud/common v0.0.0-20230710061936-f8ccb102d31b
+	github.com/nitrictech/pearls v0.0.0-20230927035425-dc9ec468bb24
 	github.com/olahol/melody v1.1.3
 	github.com/samber/lo v1.38.1
 	github.com/seaweedfs/seaweedfs v0.0.0-20230109022022-51d4a4b28d0e
@@ -209,7 +211,6 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.1 // indirect
 	github.com/gookit/color v1.5.3 // indirect
-	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e // indirect
 	github.com/gordonklaus/ineffassign v0.0.0-20230610083614-0e73809eb601 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
@@ -302,7 +303,6 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354 // indirect
 	github.com/nishanths/exhaustive v0.11.0 // indirect
 	github.com/nishanths/predeclared v0.2.2 // indirect
-	github.com/nitrictech/pearls v0.0.0-20230927035425-dc9ec468bb24 // indirect
 	github.com/nitrictech/protoutils v0.0.0-20220321044654-02667a814cdf // indirect
 	github.com/nunnatsa/ginkgolinter v0.12.1 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
@@ -340,7 +340,6 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd // indirect
 	github.com/ryancurrah/gomodguard v1.3.0 // indirect
 	github.com/ryanrolds/sqlclosecheck v0.4.0 // indirect
-	github.com/sahilm/fuzzy v0.1.0 // indirect
 	github.com/sanposhiho/wastedassign/v2 v2.0.7 // indirect
 	github.com/sashamelentyev/interfacebloat v1.1.0 // indirect
 	github.com/sashamelentyev/usestdlibvars v1.23.0 // indirect
