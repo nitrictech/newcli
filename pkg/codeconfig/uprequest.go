@@ -195,7 +195,7 @@ func (c *codeConfig) ToUpRequest() (*deploy.DeployUpRequest, error) {
 			builder.set(res)
 		}
 
-		for k := range f.apis {
+		for k, api := range f.apis {
 			spec, err := c.apiSpec(k, nil)
 			if err != nil {
 				errs.Push(fmt.Errorf("could not build spec for api: %s; %w", k, err))
@@ -216,6 +216,7 @@ func (c *codeConfig) ToUpRequest() (*deploy.DeployUpRequest, error) {
 						Document: &deploy.Api_Openapi{
 							Openapi: string(apiBody),
 						},
+						Cors: api.cors,
 					},
 				},
 			})

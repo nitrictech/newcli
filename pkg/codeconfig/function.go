@@ -77,13 +77,15 @@ func (a *FunctionDependencies) AddApiSecurityDefinitions(name string, sds map[st
 	}
 }
 
-func (a *FunctionDependencies) AddApiSecurity(name string, security map[string]*v1.ApiScopes) {
+func (a *FunctionDependencies) AddApiSecurity(name string, security map[string]*v1.ApiScopes, cors *v1.ApiCorsDefinition) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	if a.apis[name] == nil {
 		a.apis[name] = newApi(a)
 	}
+
+	a.apis[name].AddCors(cors)
 
 	for n, scopes := range security {
 		a.apis[name].AddSecurity(n, scopes.Scopes)

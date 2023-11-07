@@ -1649,12 +1649,10 @@ github.com/nitrictech/go-mods-direct v0.0.0-20221212215233-12bba0c74a7f h1:awate
 github.com/nitrictech/go-mods-direct v0.0.0-20221212215233-12bba0c74a7f/go.mod h1:jqImBS1Tsk12vV2Gk7yP9+jajhpG+cHXrg7UhVxFruQ=
 github.com/nitrictech/nitric/cloud/aws v0.0.0-20230718015326-80e1b8640347 h1:/9BIGv7ed6qWkeXchLXX0FIMqDp+7khBY5WlbHcJJEI=
 github.com/nitrictech/nitric/cloud/aws v0.0.0-20230718015326-80e1b8640347/go.mod h1:HTToJAkzkFpLszJp2Vy9vDoplEOmWcuv86wW1o0J3YY=
-github.com/nitrictech/nitric/cloud/common v0.0.0-20230710061936-f8ccb102d31b h1:9pAldJTjky0UlyEpibr355HsZWXwZdy7ZEvctVyV48U=
-github.com/nitrictech/nitric/cloud/common v0.0.0-20230710061936-f8ccb102d31b/go.mod h1:nz8/tXPMb5o2yv8g4+NsvDu0dPyrY6iZyXZ1EprenlM=
-github.com/nitrictech/nitric/core v0.0.0-20230718015326-80e1b8640347 h1:5c6IDgweLzybxniL9OkTdk9AvheDP2F6p1sFOGteICI=
-github.com/nitrictech/nitric/core v0.0.0-20230718015326-80e1b8640347/go.mod h1:iz/seHApmfpML52NVjankr+9izPddUUwZHdcSQEvm9E=
-github.com/nitrictech/nitric/core v0.0.0-20230928000037-7261774edded h1:Nm+S/GAnvKJfQHu75MY7o5LIJUukiM4WNnFj43gb2OA=
-github.com/nitrictech/nitric/core v0.0.0-20230928000037-7261774edded/go.mod h1:iz/seHApmfpML52NVjankr+9izPddUUwZHdcSQEvm9E=
+github.com/nitrictech/nitric/cloud/common v0.0.0-20231107061027-b246cc30347a h1:S6wm26B6MIZnpf1h4ZPv0+R9nrbh2Fd+nFfSgVMK01M=
+github.com/nitrictech/nitric/cloud/common v0.0.0-20231107061027-b246cc30347a/go.mod h1:+X62o2IvXWO1jw3758kdy+JWDCd5f1hCgqdPa4/Gtbo=
+github.com/nitrictech/nitric/core v0.0.0-20231107061027-b246cc30347a h1:eBANKkpskCtrUot9B3rbfwKvdLge4hnIsmFU7pG8QPc=
+github.com/nitrictech/nitric/core v0.0.0-20231107061027-b246cc30347a/go.mod h1:s1jivAiMfES33W80gdV/YiVPpUpDQrpnNpu9gdYyMKM=
 github.com/nitrictech/pearls v0.0.0-20230927035425-dc9ec468bb24 h1:Jb61oiwZoyMDqmLzNdgHjKYDLtDmbeb4GYEGSK/ZqgA=
 github.com/nitrictech/pearls v0.0.0-20230927035425-dc9ec468bb24/go.mod h1:IXCOsqYAR5KRqXbbXnHkMp9NJrfY0qOeV3IcbBR5uSA=
 github.com/nitrictech/protoutils v0.0.0-20220321044654-02667a814cdf h1:8MB8W8ylM8sCM2COGfiO39/tB6BTdiawLszaUGCNL5w=
@@ -2143,8 +2141,8 @@ github.com/uudashr/gocognit v1.0.6 h1:2Cgi6MweCsdB6kpcVQp7EW4U23iBFQWfTXiWlyp842
 github.com/uudashr/gocognit v1.0.6/go.mod h1:nAIUuVBnYU7pcninia3BHOvQkpQCeO76Uscky5BOwcY=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
-github.com/valyala/fasthttp v1.47.0 h1:y7moDoxYzMooFpT5aHgNgVOQDrS3qlkfiP9mDtGGK9c=
-github.com/valyala/fasthttp v1.47.0/go.mod h1:k2zXd82h/7UZc3VOdJ2WaUqt1uZ/XpXAfE9i+HBC3lA=
+github.com/valyala/fasthttp v1.50.0 h1:H7fweIlBm0rXLs2q0XbalvJ6r0CUPFWK3/bB4N13e9M=
+github.com/valyala/fasthttp v1.50.0/go.mod h1:k2zXd82h/7UZc3VOdJ2WaUqt1uZ/XpXAfE9i+HBC3lA=
 github.com/viant/assertly v0.5.4 h1:5Hh4U3pLZa6uhCFAGpYOxck/8l9TZczEzoHNfJAhHEQ=
 github.com/viant/ptrie v0.3.0 h1:SDaRd7Gqr1+ItCNz0GpTxRdK21nOfqjV6YtBm9jGlMY=
 github.com/viant/ptrie v0.3.0/go.mod h1:VguMnbGfz95Zw+V5VarYSqtqslDxJbOv++xLzxkMhec=

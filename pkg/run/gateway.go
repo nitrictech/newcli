@@ -37,6 +37,7 @@ import (
 	"github.com/nitrictech/cli/pkg/history"
 	"github.com/nitrictech/cli/pkg/project"
 	"github.com/nitrictech/cli/pkg/utils"
+	"github.com/nitrictech/nitric/cloud/common/cors"
 	base_http "github.com/nitrictech/nitric/cloud/common/runtime/gateway"
 	v1 "github.com/nitrictech/nitric/core/pkg/api/nitric/v1"
 	"github.com/nitrictech/nitric/core/pkg/plugins/gateway"
@@ -71,10 +72,11 @@ type BaseHttpGateway struct {
 	websocketPlugin  *RunWebsocketService
 	serviceListener  net.Listener
 	gateway.UnimplementedGatewayPlugin
-	stop    chan bool
-	pool    pool.WorkerPool
-	project *project.Project
-	dash    *dashboard.Dashboard
+	stop      chan bool
+	pool      pool.WorkerPool
+	project   *project.Project
+	dash      *dashboard.Dashboard
+	corsCache map[string]map[string]string
 }
 
 var _ gateway.GatewayService = &BaseHttpGateway{}
@@ -213,6 +215,8 @@ func (s *BaseHttpGateway) handleHttpProxyRequest(idx int) fasthttp.RequestHandle
 }
 
 func (s *BaseHttpGateway) handleApiHttpRequest(idx int) fasthttp.RequestHandler {
+	corsMiddleware := cors.CreateCorsMiddleware(s.corsCache)
+
 	return func(ctx *fasthttp.RequestCtx) {
 		if idx >= len(s.apis) {
 			ctx.Error("Sorry, nitric is listening on this port but is waiting for an API to be available to handle, you may have removed an API during development this port will be assigned to an API when one becomes available", 404)
@@ -220,6 +224,10 @@ func (s *BaseHttpGateway) handleApiHttpRequest(idx int) fasthttp.RequestHandler 
 		}
 
 		apiName := s.apis[idx]
+
+		ctx.Request.Header.Add("X-Nitric-Api", apiName)
+
+		corsMiddleware(ctx, s.pool)
 
 		headerMap := base_http.HttpHeadersToMap(&ctx.Request.Header)
 
@@ -264,6 +272,12 @@ func (s *BaseHttpGateway) handleApiHttpRequest(idx int) fasthttp.RequestHandler 
 			Trigger: httpTrigger,
 			Filter:  apiWorkerFilter(apiName),
 		})
+
+		if worker == nil && s.corsCache[apiName] != nil && string(ctx.Request.Header.Method()) == "OPTIONS" {
+			ctx.Response.SetStatusCode(204)
+			return
+		}
+
 		if err != nil {
 			ctx.Redirect(fmt.Sprintf("http://localhost:%v/not-found", s.dash.GetPort()), fasthttp.StatusTemporaryRedirect)
 			return
@@ -814,10 +828,25 @@ func (s *BaseHttpGateway) Stop() error {
 	return nil
 }
 
+func (s *BaseHttpGateway) AddCors(apiName string, def *v1.ApiCorsDefinition) {
+	if def == nil {
+		s.corsCache[apiName] = nil
+		return
+	}
+
+	headers, err := cors.GetCorsHeaders(def)
+	if err != nil {
+		s.corsCache[apiName] = nil
+	} else {
+		s.corsCache[apiName] = *headers
+	}
+}
+
 // Create new HTTP gateway
 // XXX: No External Args for function atm (currently the plugin loader does not pass any argument information)
 func NewGateway(wsPlugin *RunWebsocketService) (*BaseHttpGateway, error) {
 	return &BaseHttpGateway{
 		websocketPlugin: wsPlugin,
+		corsCache:       map[string]map[string]string{},
 	}, nil
 }

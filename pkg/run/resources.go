@@ -87,6 +87,8 @@ func (r *RunResourcesService) Declare(ctx context.Context, req resource.Resource
 	resource := req.Resource
 
 	switch resource.Type {
+	case v1.ResourceType_Api:
+		r.ls.gateway.AddCors(resource.GetName(), req.GetApi().GetCors())
 	case v1.ResourceType_Bucket:
 		r.ls.dashboard.AddBucket(resource.GetName())
 	}

@@ -31,12 +31,12 @@ require (
 	github.com/moby/moby v20.10.22+incompatible
 	github.com/nitrictech/go-mods-direct v0.0.0-20221212215233-12bba0c74a7f
 	github.com/nitrictech/nitric/cloud/aws v0.0.0-20230718015326-80e1b8640347
-	github.com/nitrictech/nitric/core v0.0.0-20230928000037-7261774edded
+	github.com/nitrictech/nitric/core v0.0.0-20231107061027-b246cc30347a
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.54
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
-	github.com/valyala/fasthttp v1.47.0
+	github.com/valyala/fasthttp v1.50.0
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/oauth2 v0.6.0 // indirect
@@ -54,7 +54,7 @@ require (
 	github.com/fasthttp/websocket v1.5.3
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nitrictech/nitric/cloud/common v0.0.0-20230710061936-f8ccb102d31b
+	github.com/nitrictech/nitric/cloud/common v0.0.0-20231107061027-b246cc30347a
 	github.com/nitrictech/pearls v0.0.0-20230927035425-dc9ec468bb24
 	github.com/olahol/melody v1.1.3
 	github.com/samber/lo v1.38.1

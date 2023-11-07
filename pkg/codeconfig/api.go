@@ -29,6 +29,7 @@ type Api struct {
 	parent              *FunctionDependencies
 	securityDefinitions map[string]*v1.ApiSecurityDefinition
 	security            map[string][]string
+	cors                *v1.ApiCorsDefinition
 	workers             []*v1.ApiWorker
 	lock                sync.RWMutex
 }
@@ -107,4 +108,11 @@ func (a *Api) AddSecurity(name string, scopes []string) {
 		// default to empty scopes for a nil assignment
 		a.security[name] = []string{}
 	}
+}
+
+func (a *Api) AddCors(cors *v1.ApiCorsDefinition) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	a.cors = cors
 }
