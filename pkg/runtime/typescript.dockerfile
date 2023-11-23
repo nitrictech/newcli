@@ -7,7 +7,7 @@ ARG HANDLER
 RUN --mount=type=cache,sharing=locked,target=/var/cache/apk \
     apk --update-cache add git g++ make py3-pip
 
-RUN yarn global add typescript @vercel/ncc
+RUN yarn global add esbuild
 
 WORKDIR /usr/app
 
@@ -26,7 +26,7 @@ COPY . .
 # make prisma external to bundle - https://github.com/prisma/prisma/issues/16901#issuecomment-1362940774 \
 # TODO: remove when custom dockerfile support is available
 RUN --mount=type=cache,sharing=private,target=/tmp/ncc-cache \
-  ncc build ${HANDLER} -o lib/ -e .prisma/client -e @prisma/client -t
+  esbuild ./${HANDLER} --bundle --minify --platform=node --outfile=lib/index.js --external:.prisma/client --external:@prisma/client
 
 FROM node:alpine as final
 
