@@ -65,6 +65,7 @@ func (s RegionItem) GetItemDescription() string {
 type Provider interface {
 	Up() (*Deployment, error)
 	Down() (*Summary, error)
+	Preview() (*Summary, error)
 	List() (interface{}, error)
 	ToFile() error
 	AskAndSave() error
@@ -77,4 +78,5 @@ type ConfigFromCode interface {
 	ProjectDir() string
 	ProjectName() string
 	ToUpRequest() (*deploy.DeployUpRequest, error)
+	ToPreviewRequest() (*deploy.DeployPreviewRequest, error)
 }

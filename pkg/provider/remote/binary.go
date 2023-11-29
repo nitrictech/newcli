@@ -107,6 +107,18 @@ func (p *binaryRemoteDeployment) Down() (*types.Summary, error) {
 	return p.remoteDeployment.Down()
 }
 
+func (p *binaryRemoteDeployment) Preview() (*types.Summary, error) {
+	// start the provider command
+	process, err := p.startProcess()
+	if err != nil {
+		return nil, err
+	}
+
+	defer process.Kill() //nolint:errcheck
+
+	return p.remoteDeployment.Preview()
+}
+
 func isExecAny(mode os.FileMode) bool {
 	os := runtime.GOOS
 

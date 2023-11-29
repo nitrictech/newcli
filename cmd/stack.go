@@ -28,6 +28,7 @@ import (
 	"github.com/nitrictech/cli/pkg/command"
 	"github.com/nitrictech/cli/pkg/operations/stack_delete"
 	"github.com/nitrictech/cli/pkg/operations/stack_new"
+	"github.com/nitrictech/cli/pkg/operations/stack_preview"
 	"github.com/nitrictech/cli/pkg/operations/stack_update"
 	"github.com/nitrictech/cli/pkg/output"
 	"github.com/nitrictech/cli/pkg/preferences"
@@ -199,6 +200,46 @@ nitric stack down -s aws -y`,
 	Args: cobra.ExactArgs(0),
 }
 
+var stackPreviewCommand = &cobra.Command{
+	Use:     "preview [-s stack]",
+	Short:   "Preview the deployment of a stack",
+	Long:    `Preview the deployment of a stack`,
+	Example: `nitric stack preview -s aws`,
+	Run: func(cmd *cobra.Command, args []string) {
+		s, err := stack.ConfigFromOptions()
+
+		if err != nil && strings.Contains(err.Error(), "No nitric stacks found") {
+			confirm := ""
+			err = survey.AskOne(&survey.Select{
+				Message: "A stack is required to deploy your project, create one now?",
+				Default: "Yes",
+				Options: []string{"Yes", "No"},
+			}, &confirm)
+			utils.CheckErr(err)
+
+			if confirm != "Yes" {
+				pterm.Info.Println("You can run `nitric stack new` to create a new stack.")
+				os.Exit(0)
+			}
+
+			err = stack_new.Run(stack_new.Args{})
+			utils.CheckErr(err)
+
+			_, err = stack.ConfigFromOptions()
+			utils.CheckErr(err)
+		}
+
+		stack_preview.Run(stack_preview.Args{
+			EnvFile:     envFile,
+			Stack:       s,
+			Force:       forceStack,
+			Interactive: !output.CI,
+		})
+	},
+	Args:    cobra.ExactArgs(0),
+	Aliases: []string{"preview"},
+}
+
 func init() {
 	stackCmd.AddCommand(newStackCmd)
 	newStackCmd.Flags().BoolVarP(&forceNewStack, "force", "f", false, "force stack creation.")
@@ -208,6 +249,11 @@ func init() {
 	stackUpdateCmd.Flags().BoolVarP(&forceStack, "force", "f", false, "force override previous deployment")
 	utils.CheckErr(stack.AddOptions(stackUpdateCmd, false))
 
+	stackCmd.AddCommand(command.AddDependencyCheck(stackPreviewCommand, command.Pulumi, command.Docker))
+	stackPreviewCommand.Flags().StringVarP(&envFile, "env-file", "e", "", "--env-file config/.my-env")
+	stackPreviewCommand.Flags().BoolVarP(&forceStack, "force", "f", false, "force override previous deployment")
+	utils.CheckErr(stack.AddOptions(stackPreviewCommand, false))
+
 	stackCmd.AddCommand(command.AddDependencyCheck(stackDeleteCmd, command.Pulumi))
 	stackDeleteCmd.Flags().BoolVarP(&confirmDown, "yes", "y", false, "confirm the destruction of the stack")
 	utils.CheckErr(stack.AddOptions(stackDeleteCmd, false))
@@ -216,4 +262,5 @@ func init() {
 
 	addAlias("stack update", "up", true)
 	addAlias("stack down", "down", true)
+	addAlias("stack preview", "preview", true)
 }

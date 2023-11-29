@@ -60,8 +60,78 @@ func (p *remoteDeployment) List() (interface{}, error) {
 	return nil, errors.New("not supported for remote deployments")
 }
 
-func (a *remoteDeployment) Preview(log output.Progress) (string, error) {
-	return "", errors.New("not supported for remote deployments")
+func (p *remoteDeployment) Preview() (*types.Summary, error) {
+	conn, err := p.dialConnection()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	req, err := p.cfc.ToPreviewRequest()
+	if err != nil {
+		return nil, err
+	}
+
+	req.Interactive = p.interactive
+
+	attributes := map[string]any{}
+
+	attributes["project"] = p.cfc.ProjectName()
+	attributes["stack"] = p.sfc.Name
+
+	for k, v := range p.sfc.Props {
+		attributes[k] = v
+	}
+
+	req.Attributes, err = structpb.NewStruct(attributes)
+	if err != nil {
+		return nil, err
+	}
+
+	client := deploy.NewDeployServiceClient(conn)
+
+	op, err := client.Preview(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &types.Summary{}
+
+	model, err := NewOutputModel()
+	if err != nil {
+		return nil, err
+	}
+
+	program := tea.NewProgram(model)
+
+	go func() {
+		_, err = program.Run()
+		if err != nil {
+			return
+		}
+	}()
+
+	for {
+		evt, err := op.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return res, nil
+			}
+
+			return res, nil
+		}
+
+		program.Send(evt.Content)
+
+		eventResult, ok := evt.Content.(*deploy.DeployPreviewEvent_Result)
+		if ok {
+			if !eventResult.Result.Success {
+				return res, errors.New("deployment failed")
+			}
+
+			return res, nil
+		}
+	}
 }
 
 func (p *remoteDeployment) dialConnection() (*grpc.ClientConn, error) {

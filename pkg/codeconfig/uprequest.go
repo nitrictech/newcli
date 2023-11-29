@@ -107,6 +107,18 @@ func policyResourceName(policy *v1.PolicyResource) (string, error) {
 	return md5Hash(policyDoc), nil
 }
 
+func (c *codeConfig) ToPreviewRequest() (*deploy.DeployPreviewRequest, error) {
+	upRequest, err := c.ToUpRequest()
+	if err != nil {
+		return nil, err
+	}
+
+	return &deploy.DeployPreviewRequest{
+		Spec:       upRequest.Spec,
+		Attributes: upRequest.Attributes,
+	}, nil
+}
+
 func (c *codeConfig) ToUpRequest() (*deploy.DeployUpRequest, error) {
 	builder := &upRequestBuilder{
 		projName:  c.initialProject.Name,
