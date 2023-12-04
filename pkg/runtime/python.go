@@ -41,7 +41,7 @@ func (t *python) BuildIgnore(additional ...string) []string {
 	return append(baseIgnores, "__pycache__/", "*.py[cod]", "*$py.class")
 }
 
-func (t *python) BaseDockerFile(w io.Writer) error {
+func (t *python) WriteDockerfile(w io.Writer) error {
 	_, err := w.Write([]byte(pythonDockerfile))
 	return err
 }

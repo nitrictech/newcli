@@ -170,6 +170,8 @@ func (d *docker) Build(dockerfile, srcPath, imageTag string, buildArgs map[strin
 		buildLogger = output.NewPtermWriter(pterm.Debug)
 	}
 
+	// TODO: Analyse log output and return actual error (instead of exit 1)
+
 	cmd.Stdout = buildLogger
 	cmd.Stderr = buildLogger
 

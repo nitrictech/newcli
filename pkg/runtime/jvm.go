@@ -41,7 +41,7 @@ func (t *jvm) BuildIgnore(additional ...string) []string {
 	return append(baseIgnores, "obj/", "bin/")
 }
 
-func (t *jvm) BaseDockerFile(w io.Writer) error {
+func (t *jvm) WriteDockerfile(w io.Writer) error {
 	_, err := w.Write([]byte(jvmDockerfile))
 	return err
 }

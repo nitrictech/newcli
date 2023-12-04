@@ -49,7 +49,7 @@ func Run(args Args) {
 	cc, err := codeconfig.New(proj, map[string]string{})
 	utils.CheckErr(err)
 
-	p, err := provider.ProviderFromFile(cc, args.Stack.Name, args.Stack.Provider, map[string]string{}, &types.ProviderOpts{Force: true, Interactive: args.Interactive})
+	p, err := provider.FromStackFile(cc, args.Stack.Name, args.Stack.Provider, map[string]string{}, &types.ProviderOpts{Force: true, Interactive: args.Interactive})
 	utils.CheckErr(err)
 
 	_, err = p.Down()

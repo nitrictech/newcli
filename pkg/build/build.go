@@ -19,11 +19,11 @@ package build
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/docker/distribution/reference"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
@@ -34,61 +34,61 @@ import (
 	"github.com/nitrictech/cli/pkg/project"
 )
 
-func dynamicDockerfile(dir, name string) (*os.File, error) {
+func newBlankDynamicDockerfile(dir, name string) (*os.File, error) {
 	// create a more stable file name for the hashing
 	return os.Create(filepath.Join(dir, fmt.Sprintf("%s.nitric.dynamic.dockerfile", name)))
 }
 
-func buildFunction(s *project.Project, fun *project.Function) func() error {
-	return func() error {
-		ce, err := containerengine.Discover()
-		if err != nil {
-			return err
-		}
-
-		rt, err := fun.GetRuntime()
-		if err != nil {
-			return err
-		}
-
-		f, err := dynamicDockerfile(s.Dir, fun.Name)
-		if err != nil {
-			return err
-		}
-
-		defer func() {
-			f.Close()
-			os.Remove(f.Name())
-		}()
-
-		if err := rt.BaseDockerFile(f); err != nil {
-			return err
-		}
-
-		ignoreFunctions := lo.Filter(lo.Values(s.Functions), func(item *project.Function, index int) bool {
-			return item.Name != fun.Name
-		})
-
-		ignoreHandlers := lo.Map(ignoreFunctions, func(item *project.Function, index int) string {
-			return item.Handler
-		})
-
-		ignores := rt.BuildIgnore(ignoreHandlers...)
-
-		if err := ce.Build(filepath.Base(f.Name()), s.Dir, fmt.Sprintf("%s-%s", s.Name, fun.Name), rt.BuildArgs(), ignores, fun.BuildLogger); err != nil {
-			return err
-		}
-
-		return nil
-	}
+func GenerateContainerImageTag(projectName string, functionName string) string {
+	return fmt.Sprintf("%s-%s", projectName, functionName)
 }
 
-// Build base non-nitric wrapped docker image
-// These will also be used for config as code runs
-func BuildBaseImages(s *project.Project) error {
-	errs, _ := errgroup.WithContext(context.Background())
-	// set concurrent build limit here
+func buildExecUnitContainerImage(buildContext string, fun *project.Function, ignoredFiles []string, logs io.Writer) error {
+	containerEngine, err := containerengine.Discover()
+	if err != nil {
+		return err
+	}
 
+	funcRuntime, err := fun.GetRuntime()
+	if err != nil {
+		return err
+	}
+
+	dockerfile, err := newBlankDynamicDockerfile(buildContext, fun.Name)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		dockerfile.Close()
+		os.Remove(dockerfile.Name())
+	}()
+
+	if err := funcRuntime.WriteDockerfile(dockerfile); err != nil {
+		return err
+	}
+
+	ignoreList := funcRuntime.BuildIgnore(ignoredFiles...)
+
+	if err := containerEngine.Build(filepath.Base(dockerfile.Name()), buildContext, GenerateContainerImageTag(fun.Project.Name, fun.Name), funcRuntime.BuildArgs(), ignoreList, logs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func isValidFunctionName(name string) bool {
+	_, err := reference.Parse(name)
+	return err == nil
+}
+
+// BaseImages - Builds images for all execution units in the project, without embedding the nitric runtime.
+//
+//	allows containers to be connected to an external nitric server, such as when gathering configuration from code.
+func BaseImages(s *project.Project, logger *Multiplexer) error {
+	errs, _ := errgroup.WithContext(context.Background())
+
+	// set concurrent build limit here
 	maxConcurrency := lo.Min([]int{goruntime.GOMAXPROCS(0), goruntime.NumCPU()})
 
 	maxConcurrencyEnv := os.Getenv("MAX_BUILD_CONCURRENCY")
@@ -101,20 +101,38 @@ func BuildBaseImages(s *project.Project) error {
 		maxConcurrency = newVal
 	}
 
-	// check functions for valid names
 	for _, fun := range s.Functions {
-		_, err := reference.Parse(fun.Name)
-		if err != nil {
+		if !isValidFunctionName(fun.Name) {
 			return fmt.Errorf("invalid handler name \"%s\". Names can only include alphanumeric characters, underscores, periods and hyphens", fun.Handler)
 		}
 	}
 
-	tea.Printf("running builds %d at a time\n", maxConcurrency)
+	fmt.Printf("running %d builds concurrently\n", maxConcurrency)
 
 	errs.SetLimit(maxConcurrency)
 
 	for _, fun := range s.Functions {
-		errs.Go(buildFunction(s, fun))
+		// Ignore all other execution unit entrypoint files.
+		// Entrypoint files should never import other entrypoints since this could cause inadvertent application of resource permissions.
+		// This ensures code breaks at build time if that restriction is violated.
+		otherExecUnits := lo.Filter(lo.Values(s.Functions), func(item *project.Function, index int) bool {
+			return item.Name != fun.Name
+		})
+
+		ignoreEntrypoints := lo.Map(otherExecUnits, func(item *project.Function, index int) string {
+			return item.Handler
+		})
+
+		var logout = io.Discard
+		if logger != nil {
+			// Add a writer to the log multiplexer
+			logout = logger.CreateWriter(fun.Name)
+		}
+
+		errs.Go(func() error {
+			fmt.Printf("building %s\n", fun.Name)
+			return buildExecUnitContainerImage(s.Dir, fun, ignoreEntrypoints, logout)
+		})
 	}
 
 	return errs.Wait()

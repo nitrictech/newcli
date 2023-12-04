@@ -27,7 +27,8 @@ import (
 type Runtime interface {
 	ContainerName() string
 	BuildIgnore(additional ...string) []string
-	BaseDockerFile(w io.Writer) error
+	// WriteDockerfile - Write the dockerfile for this runtime to the provided writer
+	WriteDockerfile(w io.Writer) error
 	BuildArgs() map[string]string
 }
 

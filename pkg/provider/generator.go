@@ -27,12 +27,12 @@ import (
 //go:embed nitric-version.txt
 var DefaultNitricVersion string
 
-func ProviderFromFile(cfc types.ConfigFromCode, name, provider string, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
+func FromStackFile(cfc types.ConfigFromCode, name, provider string, envMap map[string]string, opts *types.ProviderOpts) (types.Provider, error) {
 	switch provider {
 	case types.Aws, types.Azure, types.Gcp:
-		return remote.FromFile(cfc, name, fmt.Sprintf("nitric/%s@%s", provider, DefaultNitricVersion), envMap, opts)
+		return remote.FromStackFile(cfc, name, fmt.Sprintf("nitric/%s@%s", provider, DefaultNitricVersion), envMap, opts)
 	default:
-		return remote.FromFile(cfc, name, provider, envMap, opts)
+		return remote.FromStackFile(cfc, name, provider, envMap, opts)
 	}
 }
 

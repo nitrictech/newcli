@@ -27,7 +27,6 @@ import (
 	"github.com/bep/debounce"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -35,6 +34,7 @@ import (
 	"github.com/nitrictech/cli/pkg/build"
 	"github.com/nitrictech/cli/pkg/containerengine"
 	"github.com/nitrictech/cli/pkg/dashboard"
+	"github.com/nitrictech/cli/pkg/env"
 	"github.com/nitrictech/cli/pkg/output"
 	"github.com/nitrictech/cli/pkg/project"
 	"github.com/nitrictech/cli/pkg/run"
@@ -44,8 +44,6 @@ import (
 	"github.com/nitrictech/cli/pkg/utils"
 	"github.com/nitrictech/pearls/pkg/tui/view"
 )
-
-var envFile string
 
 type State int
 
@@ -143,7 +141,7 @@ func New(ctx context.Context, args ModelArgs) Model {
 	proj, err := getProjectConfig()
 	utils.CheckErr(err)
 
-	envMap, err := getEnvironmentVariables()
+	envMap, err := env.LoadFromDefaultFiles()
 	utils.CheckErr(err)
 
 	ce, err := containerengine.Discover()
@@ -186,14 +184,8 @@ func RunNonInteractive(noBrowser bool) error {
 	proj, err := project.FromConfig(config)
 	utils.CheckErr(err)
 
-	envFiles := utils.FilesExisting(".env", ".env.development", envFile)
-
-	envMap := map[string]string{}
-
-	if len(envFiles) > 0 {
-		envMap, err = godotenv.Read(envFiles...)
-		utils.CheckErr(err)
-	}
+	envMap, err := env.LoadFromDefaultFiles()
+	utils.CheckErr(err)
 
 	dash, err := dashboard.New(proj, envMap)
 	if err != nil {
@@ -215,7 +207,7 @@ func RunNonInteractive(noBrowser bool) error {
 	createBaseImage := tasklet.Runner{
 		StartMsg: "Building Images",
 		Runner: func(_ output.Progress) error {
-			return build.BuildBaseImages(proj)
+			return build.BaseImages(proj, nil)
 		},
 		StopMsg: "Images Built",
 	}
@@ -346,21 +338,4 @@ func getProjectConfig() (*project.Project, error) {
 	}
 
 	return proj, err
-}
-
-func getEnvironmentVariables() (map[string]string, error) {
-	envFiles := utils.FilesExisting(".env", ".env.development", envFile)
-
-	var err error
-
-	envMap := map[string]string{}
-
-	if len(envFiles) > 0 {
-		envMap, err = godotenv.Read(envFiles...)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return envMap, nil
 }

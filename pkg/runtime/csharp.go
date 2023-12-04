@@ -42,7 +42,7 @@ func (t *csharp) BuildIgnore(additional ...string) []string {
 	return append(baseIgnores, "obj/", "bin/")
 }
 
-func (t *csharp) BaseDockerFile(w io.Writer) error {
+func (t *csharp) WriteDockerfile(w io.Writer) error {
 	_, err := w.Write([]byte(csharpDockerfile))
 	return err
 }

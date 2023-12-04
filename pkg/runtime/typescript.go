@@ -46,7 +46,7 @@ func (t *typescript) BuildArgs() map[string]string {
 	}
 }
 
-func (t *typescript) BaseDockerFile(w io.Writer) error {
+func (t *typescript) WriteDockerfile(w io.Writer) error {
 	_, err := w.Write([]byte(typescriptDockerfile))
 	return err
 }

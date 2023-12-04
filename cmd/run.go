@@ -17,7 +17,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"log"
 
@@ -25,9 +24,11 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 
+	"github.com/nitrictech/cli/pkg/build"
 	"github.com/nitrictech/cli/pkg/command"
 	"github.com/nitrictech/cli/pkg/operations/local_run"
 	"github.com/nitrictech/cli/pkg/output"
+	"github.com/nitrictech/cli/pkg/project"
 	"github.com/nitrictech/cli/pkg/utils"
 )
 
@@ -54,9 +55,20 @@ var runCmd = &cobra.Command{
 			return local_run.RunNonInteractive(runNoBrowser)
 		}
 
-		if _, err := tea.NewProgram(local_run.New(context.TODO(), local_run.ModelArgs{
-			NoBrowser: runNoBrowser,
-		}), tea.WithAltScreen()).Run(); err != nil {
+		config, err := project.ConfigFromProjectPath("")
+		cobra.CheckErr(err)
+
+		proj, err := project.FromConfig(config)
+		cobra.CheckErr(err)
+
+		// if _, err := tea.NewProgram(local_run.New(context.TODO(), local_run.ModelArgs{
+		// 	NoBrowser: runNoBrowser,
+		// }), tea.WithAltScreen()).Run(); err != nil {
+		// 	return err
+		// }
+		if _, err := tea.NewProgram(build.New(build.Args{
+			Project: proj,
+		}), tea.WithoutCatchPanics()).Run(); err != nil {
 			return err
 		}
 

@@ -20,11 +20,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/pterm/pterm"
 
 	"github.com/nitrictech/cli/pkg/build"
 	"github.com/nitrictech/cli/pkg/codeconfig"
+	"github.com/nitrictech/cli/pkg/env"
 	"github.com/nitrictech/cli/pkg/output"
 	"github.com/nitrictech/cli/pkg/project"
 	"github.com/nitrictech/cli/pkg/provider"
@@ -51,38 +51,32 @@ func Run(args Args) {
 	log.SetOutput(output.NewPtermWriter(pterm.Debug))
 	log.SetFlags(0)
 
-	envFiles := utils.FilesExisting(".env", ".env.production", args.EnvFile)
-
-	envMap := map[string]string{}
-
-	if len(envFiles) > 0 {
-		envMap, err = godotenv.Read(envFiles...)
-		utils.CheckErr(err)
-	}
+	envMap, err := env.LoadFromFiles(".env", ".env.production", args.EnvFile)
+	utils.CheckErr(err)
 
 	// build base images on updates
-	createBaseImage := tasklet.Runner{
+	buildBaseImagesTask := tasklet.Runner{
 		StartMsg: "Building Images",
 		Runner: func(_ output.Progress) error {
-			return build.BuildBaseImages(proj)
+			return build.BaseImages(proj, nil)
 		},
 		StopMsg: "Images Built",
 	}
-	tasklet.MustRun(createBaseImage, tasklet.Opts{})
+	tasklet.MustRun(buildBaseImagesTask, tasklet.Opts{})
 
-	cc, err := codeconfig.New(proj, envMap)
+	configFromCode, err := codeconfig.New(proj, envMap)
 	utils.CheckErr(err)
 
-	codeAsConfig := tasklet.Runner{
+	gatherConfigFromCodeTask := tasklet.Runner{
 		StartMsg: "Gathering configuration from code..",
 		Runner: func(_ output.Progress) error {
-			return cc.Collect()
+			return configFromCode.Collect()
 		},
 		StopMsg: "Configuration gathered",
 	}
-	tasklet.MustRun(codeAsConfig, tasklet.Opts{})
+	tasklet.MustRun(gatherConfigFromCodeTask, tasklet.Opts{})
 
-	p, err := provider.ProviderFromFile(cc, args.Stack.Name, args.Stack.Provider, envMap, &types.ProviderOpts{Force: args.Force, Interactive: args.Interactive})
+	p, err := provider.FromStackFile(configFromCode, args.Stack.Name, args.Stack.Provider, envMap, &types.ProviderOpts{Force: args.Force, Interactive: args.Interactive})
 	utils.CheckErr(err)
 
 	d, err := p.Up()

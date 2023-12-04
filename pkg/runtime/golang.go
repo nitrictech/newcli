@@ -36,7 +36,7 @@ func (t *golang) BuildIgnore(additional ...string) []string {
 	return append(additional, commonIgnore...)
 }
 
-func (t *golang) BaseDockerFile(w io.Writer) error {
+func (t *golang) WriteDockerfile(w io.Writer) error {
 	_, err := w.Write([]byte(golangDockerfile))
 	return err
 }

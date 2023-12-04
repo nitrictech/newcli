@@ -62,7 +62,7 @@ func (t *custom) BuildArgs() map[string]string {
 	return args
 }
 
-func (t *custom) BaseDockerFile(w io.Writer) error {
+func (t *custom) WriteDockerfile(w io.Writer) error {
 	dockerfile, err := os.ReadFile(t.dockerfile)
 	if err != nil {
 		return err

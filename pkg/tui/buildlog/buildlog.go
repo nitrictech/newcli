@@ -55,6 +55,7 @@ type Model struct {
 	project *project.Project
 
 	functionColors map[string]lipgloss.CompleteColor
+	functionLogs   map[string]*LogWriter
 	logs           []LogMessage
 
 	Complete      bool
@@ -70,9 +71,10 @@ type ModelArgs struct {
 
 func New(args ModelArgs) Model {
 	functionColors := make(map[string]lipgloss.CompleteColor, 0)
+	functionLogs := make(map[string]*LogWriter, 0)
 
 	for idx, fun := range lo.Values(args.Project.Functions) {
-		fun.BuildLogger = &LogWriter{
+		functionLogs[fun.Name] = &LogWriter{
 			Sub:      args.Sub,
 			Function: fun.Name,
 		}
@@ -86,6 +88,7 @@ func New(args ModelArgs) Model {
 		stopwatch:      stopwatch.NewWithInterval(time.Second),
 		sub:            args.Sub,
 		functionColors: functionColors,
+		functionLogs:   functionLogs,
 		Complete:       false,
 	}
 }
@@ -108,7 +111,7 @@ func (m Model) Init() tea.Cmd {
 }
 
 func buildFunction(proj *project.Project, sub chan tea.Msg) tea.Msg {
-	err := build.BuildBaseImages(proj)
+	err := build.BaseImages(proj, nil)
 	if err != nil {
 		return ErrorMessage{Error: err}
 	}

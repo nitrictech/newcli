@@ -18,7 +18,6 @@ package project
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/samber/lo"
 
@@ -36,8 +35,6 @@ type Function struct {
 	Handler string `yaml:"handler"`
 	// The functions type
 	Config *HandlerConfig `yaml:"-"`
-	// The writer for the build logs, defaults to stdout
-	BuildLogger io.Writer
 }
 
 func (f *Function) GetRuntime() (runtime.Runtime, error) {

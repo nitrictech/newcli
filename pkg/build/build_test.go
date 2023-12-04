@@ -51,7 +51,7 @@ func TestBuildBaseImages(t *testing.T) {
 
 	containerengine.DiscoveredEngine = me
 
-	if err := BuildBaseImages(s); err != nil {
+	if err := BaseImages(s, nil); err != nil {
 		t.Errorf("CreateBaseDev() error = %v", err)
 	}
 }
@@ -77,7 +77,7 @@ func TestBuildBaseImagesThrowsError(t *testing.T) {
 
 	containerengine.DiscoveredEngine = me
 
-	err = BuildBaseImages(s)
+	err = BaseImages(s, nil)
 
 	gomock.Not(gomock.Nil().Matches(err))
 	gomock.Eq(err.Error()).Matches("an error occurred building the functions")

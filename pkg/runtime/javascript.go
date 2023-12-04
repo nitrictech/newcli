@@ -43,7 +43,7 @@ func (t *javascript) BuildIgnore(additional ...string) []string {
 	return append(additional, javascriptIgnoreList...)
 }
 
-func (t *javascript) BaseDockerFile(w io.Writer) error {
+func (t *javascript) WriteDockerfile(w io.Writer) error {
 	_, err := w.Write([]byte(javascriptDockerfile))
 	return err
 }

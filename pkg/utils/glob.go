@@ -53,26 +53,3 @@ func GlobInDir(dir, pattern string) ([]string, error) {
 
 	return final, nil
 }
-
-func FilesExisting(files ...string) []string {
-	existing := []string{}
-
-	for _, f := range files {
-		if f == "" {
-			continue
-		}
-
-		info, err := os.Stat(f)
-		if err != nil {
-			continue
-		}
-
-		if info.IsDir() {
-			continue
-		}
-
-		existing = append(existing, f)
-	}
-
-	return existing
-}
