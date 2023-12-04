@@ -32,6 +32,7 @@ import (
 
 	"github.com/nitrictech/cli/pkg/containerengine"
 	"github.com/nitrictech/cli/pkg/project"
+	"github.com/nitrictech/cli/pkg/sync"
 )
 
 func newBlankDynamicDockerfile(dir, name string) (*os.File, error) {
@@ -82,10 +83,14 @@ func isValidFunctionName(name string) bool {
 	return err == nil
 }
 
+type BuildResult struct {
+	results map[string]error
+}
+
 // BaseImages - Builds images for all execution units in the project, without embedding the nitric runtime.
 //
 //	allows containers to be connected to an external nitric server, such as when gathering configuration from code.
-func BaseImages(s *project.Project, logger *Multiplexer) error {
+func BaseImages(functions []*project.Function, logger *Multiplexer) (*BuildResult, error) {
 	errs, _ := errgroup.WithContext(context.Background())
 
 	// set concurrent build limit here
@@ -95,32 +100,34 @@ func BaseImages(s *project.Project, logger *Multiplexer) error {
 	if maxConcurrencyEnv != "" {
 		newVal, err := strconv.Atoi(maxConcurrencyEnv)
 		if err != nil {
-			return fmt.Errorf("invalid value for MAX_BUILD_CONCURRENCY must be int got %s", maxConcurrencyEnv)
+			return nil, fmt.Errorf("invalid value for MAX_BUILD_CONCURRENCY must be int got %s", maxConcurrencyEnv)
 		}
 
 		maxConcurrency = newVal
 	}
 
-	for _, fun := range s.Functions {
+	for _, fun := range functions {
 		if !isValidFunctionName(fun.Name) {
-			return fmt.Errorf("invalid handler name \"%s\". Names can only include alphanumeric characters, underscores, periods and hyphens", fun.Handler)
+			return nil, fmt.Errorf("invalid handler name \"%s\". Names can only include alphanumeric characters, underscores, periods and hyphens", fun.Handler)
 		}
 	}
 
 	fmt.Printf("running %d builds concurrently\n", maxConcurrency)
 
-	errs.SetLimit(maxConcurrency)
+	workerPool := sync.NewWorkerPool[error](maxConcurrency)
 
-	for _, fun := range s.Functions {
+	// errs.SetLimit(maxConcurrency)
+
+	for _, fun := range functions {
 		// Ignore all other execution unit entrypoint files.
 		// Entrypoint files should never import other entrypoints since this could cause inadvertent application of resource permissions.
 		// This ensures code breaks at build time if that restriction is violated.
-		otherExecUnits := lo.Filter(lo.Values(s.Functions), func(item *project.Function, index int) bool {
-			return item.Name != fun.Name
+		otherExecUnits := lo.Filter(lo.Values(functions), func(other *project.Function, index int) bool {
+			return other.Name != fun.Name
 		})
 
-		ignoreEntrypoints := lo.Map(otherExecUnits, func(item *project.Function, index int) string {
-			return item.Handler
+		ignoreEntrypoints := lo.Map(otherExecUnits, func(other *project.Function, index int) string {
+			return other.Handler
 		})
 
 		var logout = io.Discard
@@ -129,11 +136,30 @@ func BaseImages(s *project.Project, logger *Multiplexer) error {
 			logout = logger.CreateWriter(fun.Name)
 		}
 
-		errs.Go(func() error {
-			fmt.Printf("building %s\n", fun.Name)
-			return buildExecUnitContainerImage(s.Dir, fun, ignoreEntrypoints, logout)
+		workerPool.Go(fun.Name, func() error {
+			return buildExecUnitContainerImage(fun.Project.Dir, fun, ignoreEntrypoints, logout)
 		})
 	}
 
-	return errs.Wait()
+	buildResults := workerPool.Wait()
+
+	// errorResults := lo.Filter(buildResults, func(result sync.JobResult[error], index int) bool {
+	// 	return result.Result != nil
+	// })
+
+	errorMap := map[string]error{}
+	for _, result := range buildResults {
+
+	}
+
+	if len(errorResults) > 0 {
+		errorResult := "errors occurred building images:\n"
+		for _, result := range errorResults {
+			errorResult += fmt.Sprintf()
+		}
+
+		return nil, err
+	}
+
+	return nil
 }

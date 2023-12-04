@@ -1,137 +1,116 @@
 package sync
 
-import (
-	"fmt"
-	"sync"
-)
+import "sync"
 
-type ExecutionIdentifier = string
-
-type WorkErr struct {
-	Identifier ExecutionIdentifier
-	Err        error
+type Job[Result any] struct {
+	Description string
+	Func        func() Result
 }
 
-type Work struct {
-	Identifier ExecutionIdentifier
-	Func       func() error
+type JobResult[Result any] struct {
+	Description string
+	Result      Result
 }
 
-type SuperPool struct {
-	queue           []Work
-	errors          SyncMap[ExecutionIdentifier, error]
-	workerLock      sync.Mutex
-	maxWorkers      uint32
-	activeWorkers   uint32
-	workerReadyChan chan chan Work
-	jobWaitGroup    sync.WaitGroup
+// WorkerPool is not thread safe
+// Only use Go/Wait on the same thread
+type WorkerPool[Result any] struct {
+	in        chan Job[Result]
+	triage    []Job[Result]
+	work      chan Job[Result]
+	done      chan JobResult[Result]
+	results   []JobResult[Result]
+	waitGroup sync.WaitGroup
 }
 
-func NewSuperPool(maxConcurrent uint32) *SuperPool {
-	return &SuperPool{
-		jobWaitGroup: sync.WaitGroup{},
-		maxWorkers:   maxConcurrent,
-	}
-}
-
-func (s *SuperPool) enqueue(job Work) {
-	s.jobWaitGroup.Add(1)
-	s.workerLock.Lock()
-	defer s.workerLock.Unlock()
-
-	s.errors.Set(job.Identifier, nil)
-	s.queue = append(s.queue, job)
-}
-
-// Go - Adds a new job to the pool
-func (s *SuperPool) Go(jobId ExecutionIdentifier, f func() error) error {
-	if _, found := s.errors.Get(jobId); found {
-		return fmt.Errorf("process already exists")
-	}
-	s.enqueue(Work{
-		Identifier: jobId,
-		Func:       f,
-	})
-
-	s.processWorkQueue()
-
-	return nil
-}
-
-// processWorkQueue ensures the supervisor and workers are running and processing the work queue.
-func (s *SuperPool) processWorkQueue() {
-	s.startSupervisor()
-	s.startWorkers()
-}
-
-// Wait blocks until all jobs are complete
-func (s *SuperPool) Wait() map[ExecutionIdentifier]error {
-	s.jobWaitGroup.Wait()
-
-	close(s.workerReadyChan)
-
-	return s.errors.AsMap()
-}
-
-// startSupervisor ensures the supervisor is running.
-// the supervisor is responsible for assigning work to workers when they're ready.
-func (s *SuperPool) startSupervisor() {
-	s.workerLock.Lock()
-	defer s.workerLock.Unlock()
-
-	// if this is the first call, start the supervisor
-	if s.workerReadyChan == nil {
-		s.workerReadyChan = make(chan chan Work)
-		go func() {
-			for {
-				workerChan, ok := <-s.workerReadyChan
-				if !ok {
-					break
+// startSupervisor - Starts the supervisor goroutine
+// the supervisor is responsible for accepting new work, distributing it to workers and collecting results
+func (pool *WorkerPool[Result]) startSupervisor() {
+	go func() {
+		for {
+			// If there is work in the triage, send as much as possible to workers
+			workerAvailable := true
+			for workerAvailable && len(pool.triage) > 0 {
+				nextWork := pool.triage[0]
+				select {
+				case pool.work <- nextWork:
+					// trim the slice
+					pool.triage = pool.triage[1:]
+				default:
+					// couldn't find a worker, none available
+					workerAvailable = false
 				}
-
-				s.workerLock.Lock()
-				if len(s.queue) > 0 {
-					workerChan <- s.queue[0]
-					s.queue = s.queue[1:]
-				} else {
-					// got no new work for you bud
-					close(workerChan)
-					s.activeWorkers--
-				}
-				s.workerLock.Unlock()
 			}
-		}()
-	}
-}
 
-// startWorkers ensures the worker pool is running.
-// if more work is waiting than there are workers, new workers are started up to the max.
-func (s *SuperPool) startWorkers() {
-	s.workerLock.Lock()
-	defer s.workerLock.Unlock()
-
-	for i := 0; s.activeWorkers < s.maxWorkers && i < len(s.queue); i++ {
-		if s.activeWorkers >= s.maxWorkers {
-			return
+			// wait for new work or results
+			select {
+			case in := <-pool.in:
+				pool.waitGroup.Add(1)
+				pool.triage = append(pool.triage, in)
+			case result, ok := <-pool.done:
+				if !ok {
+					// no more result can be collected, we're done.
+					return
+				}
+				// add a result
+				pool.results = append(pool.results, result)
+				pool.waitGroup.Done()
+			}
 		}
-		s.activeWorkers++
+	}()
+}
 
-		go func() {
-			workChan := make(chan Work)
-			for {
-				// notify ready to receive new work
-				s.workerReadyChan <- workChan
-				// Get new work
-				newWork, ok := <-workChan
-				if !ok {
-					break
-				}
-				err := newWork.Func()
-				if err != nil {
-					s.errors.Set(newWork.Identifier, err)
-				}
-				s.jobWaitGroup.Done()
+// startWorker - Starts a worker goroutine
+func (pool *WorkerPool[Result]) startWorker() {
+	go func() {
+		for work := range pool.work {
+			result := work.Func()
+
+			pool.done <- JobResult[Result]{
+				Description: work.Description,
+				Result:      result,
 			}
-		}()
+		}
+	}()
+}
+
+// NewWorkerPool - Creates a new worker pool with the specified number of workers
+func NewWorkerPool[Result any](workers int) *WorkerPool[Result] {
+	pool := &WorkerPool[Result]{
+		in:        make(chan Job[Result]),
+		triage:    []Job[Result]{},
+		work:      make(chan Job[Result], workers),
+		done:      make(chan JobResult[Result], workers),
+		results:   []JobResult[Result]{},
+		waitGroup: sync.WaitGroup{},
 	}
+
+	pool.startSupervisor()
+
+	for i := 0; i < workers; i++ {
+		pool.startWorker()
+	}
+
+	return pool
+}
+
+// Go - Adds a job to the worker pool
+// if there are no workers available, the job will be queued until one is available
+func (pool *WorkerPool[Result]) Go(description string, fun func() Result) {
+	if pool.in == nil {
+		panic("cannot add jobs to a worker pool after calling Wait()")
+	}
+	pool.in <- Job[Result]{
+		Description: description,
+		Func:        fun,
+	}
+}
+
+// Wait - Waits for all jobs to complete and returns the results
+func (pool *WorkerPool[Result]) Wait() []JobResult[Result] {
+	pool.in = nil
+	pool.waitGroup.Wait()
+	close(pool.done) // signal the supervisor to stop
+	close(pool.work) // signal the workers to stop
+	return pool.results
 }
