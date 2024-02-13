@@ -283,7 +283,13 @@ var stackUpdateCmd = &cobra.Command{
 
 					fmt.Printf("%s:%s [%s]:%s %s\n", updateResType, updateResName, content.Update.Action, content.Update.Status, content.Update.Message)
 				case *deploymentspb.DeploymentUpEvent_Result:
-					fmt.Printf("\nResult: %s\n", content.Result.Details)
+					output := content.Result.GetSimple()
+
+					if output == "" {
+						output = content.Result.GetMarkdown()
+					}
+
+					fmt.Printf("\nResult: %s\n", output)
 				}
 			}
 		} else {

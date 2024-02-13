@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	_ "embed"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 
@@ -125,7 +129,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			existingChild.Status = content.Update.Status
 			existingChild.Message = content.Update.Message
 		case *deploymentspb.DeploymentUpEvent_Result:
-			m.resultOutput = content.Result.Details
+			m.resultOutput = content.Result.GetMarkdown()
 		default:
 			// discard for now
 		}
@@ -141,6 +145,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 const maxOutputLines = 5
+
+// Extend base glamor style
+func nitricMdStyle() ansi.StyleConfig {
+	baseStyle := glamour.DraculaStyleConfig
+
+	baseStyle.Link.Color = &tui.Colors.Purple.TrueColor
+	baseStyle.Heading.Color = &tui.Colors.Blue.TrueColor
+
+	return baseStyle
+}
 
 var (
 	terminalBorderStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true, false, true, false).BorderForeground(tui.Colors.Purple)
@@ -212,8 +226,22 @@ func (m Model) View() string {
 
 	if m.resultOutput != "" {
 		v.Break()
-		v.Addln(fragments.Tag("result"))
-		v.Addln("\n%s", m.resultOutput)
+		r, _ := glamour.NewTermRenderer(
+			// detect background color and pick either the default dark or light theme
+			// glamour.WithAutoStyle(),
+
+			glamour.WithStyles(nitricMdStyle()),
+			// glamour.WithStylesFromJSONBytes(nitricStyle),
+			// wrap output at specific width (default is 80)
+			glamour.WithWordWrap(m.windowSize.Width),
+		)
+
+		output, _ := r.Render(m.resultOutput)
+
+		v.Addln(output)
+
+		// v.Addln(fragments.Tag("result"))
+		// v.Addln("\n%s", m.resultOutput)
 	}
 
 	return v.Render()
