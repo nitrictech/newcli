@@ -1,0 +1,6 @@
+# The provider to use and it's published version
+# See building custom provider docs:
+# https://nitric.io/docs/reference/providers/custom/building-custom-provider#packaging-your-provider
+provider: custom/%s@0.0.1
+# Add your additional keys and config below
+# region:

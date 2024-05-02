@@ -42,13 +42,16 @@ var azureConfigTemplate string
 //go:embed gcp.config.yaml
 var gcpConfigTemplate string
 
+//go:embed custom.config.yaml
+var customConfigTemplate string
+
 var fileNameRegex = regexp.MustCompile(`(?i)^nitric\.(\S+)\.ya?ml$`)
 
 func IsValidFileName(stackName string) bool {
 	return fileNameRegex.MatchString(stackName)
 }
 
-func NewStackFile(fs afero.Fs, providerName string, stackName string, dir string) (string, error) {
+func NewStackFile(fs afero.Fs, providerName string, stackName string, dir string, customProviderName string) (string, error) {
 	if dir == "" {
 		dir = "./"
 	}
@@ -62,6 +65,8 @@ func NewStackFile(fs afero.Fs, providerName string, stackName string, dir string
 		template = gcpConfigTemplate
 	case "azure":
 		template = azureConfigTemplate
+	case "custom":
+		template = fmt.Sprintf(customConfigTemplate, customProviderName)
 	}
 
 	fileName := StackFileName(stackName)

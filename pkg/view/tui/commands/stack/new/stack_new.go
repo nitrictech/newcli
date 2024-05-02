@@ -49,6 +49,7 @@ type NewStackStatus int
 const (
 	NameInput NewStackStatus = iota
 	ProviderInput
+	CustomProviderInput
 	Pending
 	Done
 	Error
@@ -56,13 +57,14 @@ const (
 
 // Model - represents the state of the new stack creation operation
 type Model struct {
-	namePrompt     textprompt.TextPrompt
-	providerPrompt listprompt.ListPrompt
-	spinner        spinner.Model
-	status         NewStackStatus
-	provider       string
-	projectConfig  *project.ProjectConfiguration
-	nonInteractive bool
+	namePrompt               textprompt.TextPrompt
+	providerPrompt           listprompt.ListPrompt
+	customProviderNamePrompt textprompt.TextPrompt
+	spinner                  spinner.Model
+	status                   NewStackStatus
+	provider                 string
+	projectConfig            *project.ProjectConfiguration
+	nonInteractive           bool
 
 	newStackFilePath string
 
@@ -79,6 +81,11 @@ func (m Model) StackName() string {
 // ProviderName returns the stack cloud name selected by the user
 func (m Model) ProviderName() string {
 	return m.providerPrompt.Choice()
+}
+
+// customProviderName - returns the custom provider name entered by the user
+func (m Model) customProviderName() string {
+	return m.customProviderNamePrompt.Value()
 }
 
 // Init initializes the model, used by Bubbletea
@@ -124,6 +131,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.namePrompt.Blur()
 
 			m.status = ProviderInput
+		} else if msg.ID == m.customProviderNamePrompt.ID {
+			m.customProviderNamePrompt.Blur()
+
+			m.status = Pending
+
+			return m, m.createStack()
 		}
 
 		return m, nil
@@ -140,10 +153,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.providerPrompt.Choice() != "" {
 			m.provider = m.providerPrompt.Choice()
 
+			if m.provider == "custom" {
+				m.status = CustomProviderInput
+
+				m.customProviderNamePrompt.Focus()
+
+				return m, cmd
+			}
+
 			m.status = Pending
 
 			return m, m.createStack()
 		}
+	case CustomProviderInput:
+		m.customProviderNamePrompt, cmd = m.customProviderNamePrompt.UpdateTextPrompt(msg)
 	case Pending:
 		m.spinner, cmd = m.spinner.Update(msg)
 	case Done:
@@ -192,6 +215,11 @@ func (m Model) View() string {
 		// Cloud selection input
 		if m.status >= ProviderInput {
 			v.Addln(m.providerPrompt.View())
+		}
+
+		// Custom provider input
+		if m.status >= CustomProviderInput && m.provider == "custom" {
+			v.Addln(m.customProviderNamePrompt.View())
 		}
 	}
 
@@ -266,12 +294,13 @@ func stackNameExistsValidator(projectDir string) validation.StringValidator {
 }
 
 const (
-	Aws   = "aws"
-	Azure = "azure"
-	Gcp   = "gcp"
+	Aws    = "aws"
+	Azure  = "azure"
+	Gcp    = "gcp"
+	Custom = "custom"
 )
 
-var availableProviders = []string{Aws, Gcp, Azure}
+var availableProviders = []string{Aws, Gcp, Azure, Custom}
 
 func New(fs afero.Fs, args Args) Model {
 	// Load and update the project name in the template's nitric.yaml
@@ -300,6 +329,14 @@ func New(fs afero.Fs, args Args) Model {
 		Items:  list.StringsToListItems(availableProviders),
 	})
 
+	customProviderNamePrompt := textprompt.NewTextPrompt("customProviderName", textprompt.TextPromptArgs{
+		Prompt:            "What should we name this provider?",
+		Tag:               "name",
+		Validator:         nameValidator,
+		Placeholder:       "extension",
+		InFlightValidator: nameInFlightValidator,
+	})
+
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = spinnerStyle
@@ -316,9 +353,9 @@ func New(fs afero.Fs, args Args) Model {
 	}
 
 	if args.ProviderName != "" {
-		if !lo.Contains([]string{"aws", "azure", "gcp"}, args.ProviderName) {
+		if !lo.Contains([]string{"aws", "azure", "gcp", "custom"}, args.ProviderName) {
 			return Model{
-				err: fmt.Errorf("cloud name is not valid, must be aws, azure or gcp"),
+				err: fmt.Errorf("cloud name is not valid, must be aws, azure, gcp or custom"),
 			}
 		}
 
@@ -335,14 +372,15 @@ func New(fs afero.Fs, args Args) Model {
 	}
 
 	return Model{
-		fs:             fs,
-		namePrompt:     namePrompt,
-		providerPrompt: providerPrompt,
-		nonInteractive: isNonInteractive,
-		status:         stackStatus,
-		projectConfig:  projectConfig,
-		spinner:        s,
-		err:            nil,
+		fs:                       fs,
+		namePrompt:               namePrompt,
+		providerPrompt:           providerPrompt,
+		customProviderNamePrompt: customProviderNamePrompt,
+		nonInteractive:           isNonInteractive,
+		status:                   stackStatus,
+		projectConfig:            projectConfig,
+		spinner:                  s,
+		err:                      nil,
 	}
 }
 
@@ -354,7 +392,7 @@ type stackCreateResultMsg struct {
 // createStack returns a command that will create the stack on disk using the inputs gathered
 func (m Model) createStack() tea.Cmd {
 	return func() tea.Msg {
-		filePath, err := stack.NewStackFile(m.fs, m.provider, m.StackName(), "")
+		filePath, err := stack.NewStackFile(m.fs, m.provider, m.StackName(), "", m.customProviderName())
 
 		return stackCreateResultMsg{
 			err:      err,
