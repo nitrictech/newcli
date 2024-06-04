@@ -130,7 +130,7 @@ func (p *Project) BuildServices(fs afero.Fs) (chan ServiceBuildUpdate, error) {
 }
 
 func (p *Project) collectServiceRequirements(service Service) (*collector.ServiceRequirements, error) {
-	serviceRequirements := collector.NewServiceRequirements(service.Name, service.GetFilePath(), service.Type)
+	serviceRequirements := collector.NewServiceRequirements(service.Name, service.GetFilePath(), service.Type, collector.ExecutionType_Service)
 
 	// start a grpc service with this registered
 	grpcServer := grpc.NewServer()

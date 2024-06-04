@@ -33,6 +33,13 @@ import (
 	websocketspb "github.com/nitrictech/nitric/core/pkg/proto/websockets/v1"
 )
 
+type ExecutionType int
+
+const (
+	ExecutionType_Service ExecutionType = iota
+	ExecutionType_Job
+)
+
 // ServiceRequirements - Cloud resource requirements for a Nitric Application Service
 //
 // Hosts all Nitric resource servers in a collection-only mode, where services can call into the servers to request resources they require for their operation.
@@ -40,6 +47,8 @@ type ServiceRequirements struct {
 	serviceName string
 	serviceType string
 	serviceFile string
+
+	executionType ExecutionType
 
 	resourceLock sync.Mutex
 
@@ -65,7 +74,6 @@ type ServiceRequirements struct {
 	topicspb.UnimplementedTopicsServer
 	storagepb.UnimplementedStorageListenerServer
 	websocketspb.UnimplementedWebsocketServer
-	// apispb.UnimplementedApiServer
 
 	ApiServer apispb.ApiServer
 }
@@ -176,6 +184,11 @@ func (s *ServiceRequirements) Proxy(stream httppb.Http_ProxyServer) error {
 	s.resourceLock.Lock()
 	defer s.resourceLock.Unlock()
 
+	if s.executionType == ExecutionType_Job {
+		s.errors = append(s.errors, fmt.Errorf("nitric jobs may not serve http proxies"))
+		return nil
+	}
+
 	// capture a http proxy
 	if len(s.routes) > 0 {
 		s.errors = append(s.errors, fmt.Errorf("cannot register HTTP proxy, API routes have already been registered"))
@@ -203,6 +216,11 @@ func (s *ServiceRequirements) Proxy(stream httppb.Http_ProxyServer) error {
 func (s *ServiceRequirements) Serve(stream apispb.Api_ServeServer) error {
 	s.resourceLock.Lock()
 	defer s.resourceLock.Unlock()
+
+	if s.executionType == ExecutionType_Job {
+		s.errors = append(s.errors, fmt.Errorf("nitric jobs may not serve Apis"))
+		return nil
+	}
 
 	msg, err := stream.Recv()
 	if err != nil {
@@ -238,6 +256,11 @@ func (s *ServiceRequirements) Serve(stream apispb.Api_ServeServer) error {
 func (s *ServiceRequirements) Schedule(stream schedulespb.Schedules_ScheduleServer) error {
 	s.resourceLock.Lock()
 	defer s.resourceLock.Unlock()
+
+	if s.executionType == ExecutionType_Job {
+		s.errors = append(s.errors, fmt.Errorf("nitric jobs may not serve schedules"))
+		return nil
+	}
 
 	msg, err := stream.Recv()
 	if err != nil {
@@ -292,6 +315,11 @@ func (s *ServiceRequirements) Listen(stream storagepb.StorageListener_ListenServ
 	s.resourceLock.Lock()
 	defer s.resourceLock.Unlock()
 
+	if s.executionType == ExecutionType_Job {
+		s.errors = append(s.errors, fmt.Errorf("nitric jobs may not listen to storage events"))
+		return nil
+	}
+
 	msg, err := stream.Recv()
 	if err != nil {
 		return err
@@ -322,6 +350,11 @@ func (s *ServiceRequirements) HandleEvents(stream websocketspb.WebsocketHandler_
 	s.resourceLock.Lock()
 	defer s.resourceLock.Unlock()
 
+	if s.executionType == ExecutionType_Job {
+		s.errors = append(s.errors, fmt.Errorf("nitric jobs may not host websockets"))
+		return nil
+	}
+
 	msg, err := stream.Recv()
 	if err != nil {
 		return err
@@ -350,7 +383,7 @@ func (s *ServiceRequirements) HandleEvents(stream websocketspb.WebsocketHandler_
 	})
 }
 
-func NewServiceRequirements(serviceName string, serviceFile string, serviceType string) *ServiceRequirements {
+func NewServiceRequirements(serviceName string, serviceFile string, serviceType string, executionType ExecutionType) *ServiceRequirements {
 	if serviceType == "" {
 		serviceType = "default"
 	}
@@ -360,6 +393,7 @@ func NewServiceRequirements(serviceName string, serviceFile string, serviceType 
 		serviceType:           serviceType,
 		serviceFile:           serviceFile,
 		resourceLock:          sync.Mutex{},
+		executionType:         executionType,
 		routes:                make(map[string][]*apispb.RegistrationRequest),
 		schedules:             make(map[string]*schedulespb.RegistrationRequest),
 		subscriptions:         make(map[string][]*topicspb.RegistrationRequest),
