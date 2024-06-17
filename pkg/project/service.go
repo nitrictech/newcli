@@ -243,14 +243,25 @@ func (s *Service) Run(stop <-chan bool, updates chan<- ServiceRunUpdate, env map
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 
+	err := os.MkdirAll(".nitric/logs", os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	// Create a file writer for the logs
+	logFile, err := os.Create(filepath.Join(".nitric/logs/", fmt.Sprintf("%s.log", s.Name)))
+	if err != nil {
+		return err
+	}
+
 	// cmd.Env = append(cmd.Env, fmt.Sprintf("SERVICE_PATH=\"%s\"", s.filepath))
 
-	cmd.Stdout = &ServiceRunUpdateWriter{
+	cmd.Stdout = io.MultiWriter(&ServiceRunUpdateWriter{
 		updates:     updates,
 		serviceName: s.Name,
 		label:       s.filepath,
 		status:      ServiceRunStatus_Running,
-	}
+	}, logFile)
 
 	cmd.Stderr = &ServiceRunUpdateWriter{
 		updates:     updates,
@@ -287,7 +298,7 @@ func (s *Service) Run(stop <-chan bool, updates chan<- ServiceRunUpdate, env map
 		}
 	}(cmd)
 
-	err := <-errChan
+	err = <-errChan
 	updates <- ServiceRunUpdate{
 		ServiceName: s.Name,
 		Status:      ServiceRunStatus_Error,
