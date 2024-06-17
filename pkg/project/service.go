@@ -254,6 +254,11 @@ func (s *Service) Run(stop <-chan bool, updates chan<- ServiceRunUpdate, env map
 		return err
 	}
 
+	errorLogFile, err := os.Create(filepath.Join(".nitric/logs/", fmt.Sprintf("%s.error.log", s.Name)))
+	if err != nil {
+		return err
+	}
+
 	// cmd.Env = append(cmd.Env, fmt.Sprintf("SERVICE_PATH=\"%s\"", s.filepath))
 
 	cmd.Stdout = io.MultiWriter(&ServiceRunUpdateWriter{
@@ -263,12 +268,12 @@ func (s *Service) Run(stop <-chan bool, updates chan<- ServiceRunUpdate, env map
 		status:      ServiceRunStatus_Running,
 	}, logFile)
 
-	cmd.Stderr = &ServiceRunUpdateWriter{
+	cmd.Stderr = io.MultiWriter(&ServiceRunUpdateWriter{
 		updates:     updates,
 		serviceName: s.Name,
 		label:       s.filepath,
 		status:      ServiceRunStatus_Error,
-	}
+	}, errorLogFile)
 
 	errChan := make(chan error)
 
