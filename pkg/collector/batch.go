@@ -57,6 +57,11 @@ func (s *BatchRequirements) Error() error {
 	return nil
 }
 
+// TODO: Remove when databases are no longer in preview
+func (s *BatchRequirements) HasDatabases() bool {
+	return len(s.sqlDatabases) > 0
+}
+
 func (s *BatchRequirements) RegisterServices(grpcServer *grpc.Server) {
 	resourcespb.RegisterResourcesServer(grpcServer, s)
 	apispb.RegisterApiServer(grpcServer, s.ApiServer)
@@ -208,11 +213,7 @@ func (s *BatchRequirements) Subscribe(stream topicspb.Subscriber_SubscribeServer
 	})
 }
 
-func NewBatchRequirements(serviceName string, serviceFile string, serviceType string) *BatchRequirements {
-	if serviceType == "" {
-		serviceType = "default"
-	}
-
+func NewBatchRequirements(serviceName string, serviceFile string) *BatchRequirements {
 	requirements := &BatchRequirements{
 		batchName:      serviceName,
 		batchFile:      serviceFile,

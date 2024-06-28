@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	goruntime "runtime"
 	"strings"
 
@@ -29,6 +30,14 @@ type Batch struct {
 	buildContext runtime.RuntimeBuildContext
 
 	runCmd string
+}
+
+func (s *Batch) GetFilePath() string {
+	return s.filepath
+}
+
+func (s *Batch) GetAbsoluteFilePath() (string, error) {
+	return filepath.Abs(s.filepath)
 }
 
 // FIXME: Duplicate code from service.go

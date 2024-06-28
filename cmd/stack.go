@@ -245,11 +245,6 @@ var stackUpdateCmd = &cobra.Command{
 			envVariables["NITRIC_BETA_PROVIDERS"] = "true"
 		}
 
-		defaultImageName, ok := proj.DefaultMigrationImage(fs)
-		if !ok {
-			defaultImageName = ""
-		}
-
 		migrationImageContexts, err := collector.GetMigrationImageBuildContexts(serviceRequirements, fs)
 		tui.CheckErr(err)
 		// Build images from contexts and provide updates on the builds
@@ -277,7 +272,7 @@ var stackUpdateCmd = &cobra.Command{
 			}
 		}
 
-		spec, err := collector.ServiceRequirementsToSpec(proj.Name, envVariables, serviceRequirements, defaultImageName)
+		spec, err := collector.ServiceRequirementsToSpec(proj.Name, envVariables, serviceRequirements)
 		tui.CheckErr(err)
 
 		providerStdout := make(chan string)

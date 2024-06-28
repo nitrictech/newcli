@@ -840,7 +840,7 @@ func checkServiceRequirementErrors(allServiceRequirements []*ServiceRequirements
 }
 
 // convert service requirements to a cloud bill of materials
-func ServiceRequirementsToSpec(projectName string, environmentVariables map[string]string, allServiceRequirements []*ServiceRequirements, defaultMigrationImage string) (*deploymentspb.Spec, error) {
+func ServiceRequirementsToSpec(projectName string, environmentVariables map[string]string, allServiceRequirements []*ServiceRequirements) (*deploymentspb.Spec, error) {
 	if err := checkServiceRequirementErrors(allServiceRequirements); err != nil {
 		return nil, err
 	}

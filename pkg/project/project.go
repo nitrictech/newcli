@@ -200,6 +200,59 @@ func (p *Project) collectServiceRequirements(service Service) (*collector.Servic
 	return serviceRequirements, nil
 }
 
+func (p *Project) collectBatchRequirements(service Batch) (*collector.BatchRequirements, error) {
+	serviceRequirements := collector.NewBatchRequirements(service.Name, service.GetFilePath())
+
+	// start a grpc service with this registered
+	grpcServer := grpc.NewServer()
+
+	serviceRequirements.RegisterServices(grpcServer)
+
+	listener, err := net.Listen("tcp", ":")
+	if err != nil {
+		return nil, err
+	}
+
+	// register non-blocking
+	go func() {
+		err := grpcServer.Serve(listener)
+		if err != nil {
+			logger.Errorf("unable to start local Nitric collection server: %s", err)
+		}
+	}()
+
+	defer grpcServer.Stop()
+
+	// run the service we want to collect for targeting the grpc server
+	// TODO: load and run .env files, etc.
+	stopChannel := make(chan bool)
+	updatesChannel := make(chan ServiceRunUpdate)
+
+	go func() {
+		for range updatesChannel {
+			// TODO: Provide some updates - bubbletea nice output
+			// fmt.Println("container update:", update)
+			continue
+		}
+	}()
+
+	_, port, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		return nil, fmt.Errorf("unable to split host and port for local Nitric collection server: %w", err)
+	}
+
+	err = service.RunContainer(stopChannel, updatesChannel, WithNitricPort(port), WithNitricEnvironment("build"))
+	if err != nil {
+		return nil, err
+	}
+
+	if serviceRequirements.HasDatabases() && !slices.Contains(p.Preview, preview.Feature_SqlDatabases) {
+		return nil, fmt.Errorf("service %s requires a database, but the project does not have the 'sql-databases' preview feature enabled. Please add sql-databases to the preview field of your nitric.yaml file to enable this feature", service.filepath)
+	}
+
+	return serviceRequirements, nil
+}
+
 func (p *Project) CollectServicesRequirements() ([]*collector.ServiceRequirements, error) {
 	allServiceRequirements := []*collector.ServiceRequirements{}
 	serviceErrors := []error{}
@@ -240,6 +293,48 @@ func (p *Project) CollectServicesRequirements() ([]*collector.ServiceRequirement
 	}
 
 	return allServiceRequirements, nil
+}
+
+func (p *Project) CollectBatchRequirements() ([]*collector.BatchRequirements, error) {
+	allBatchRequirements := []*collector.BatchRequirements{}
+	batchErrors := []error{}
+
+	reqLock := sync.Mutex{}
+	errorLock := sync.Mutex{}
+	wg := sync.WaitGroup{}
+
+	for _, batch := range p.batches {
+		b := batch
+
+		wg.Add(1)
+
+		go func(s Batch) {
+			defer wg.Done()
+
+			batchRequirements, err := p.collectBatchRequirements(s)
+			if err != nil {
+				errorLock.Lock()
+				defer errorLock.Unlock()
+
+				batchErrors = append(batchErrors, err)
+
+				return
+			}
+
+			reqLock.Lock()
+			defer reqLock.Unlock()
+
+			allBatchRequirements = append(allBatchRequirements, batchRequirements)
+		}(b)
+	}
+
+	wg.Wait()
+
+	if len(batchErrors) > 0 {
+		return nil, errors.Join(batchErrors...)
+	}
+
+	return allBatchRequirements, nil
 }
 
 // DefaultMigrationImage - Returns the default migration image name for the project
