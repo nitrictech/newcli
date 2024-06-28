@@ -167,6 +167,8 @@ func (s *ServiceRequirements) Declare(ctx context.Context, req *resourcespb.Reso
 	case resourcespb.ResourceType_Queue:
 		// add a queue
 		s.queues[req.Id.GetName()] = req.GetQueue()
+	case resourcespb.ResourceType_Job:
+		s.errors = append(s.errors, fmt.Errorf("jobs are not supported in services"))
 	}
 
 	return &resourcespb.ResourceDeclareResponse{}, nil

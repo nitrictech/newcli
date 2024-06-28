@@ -29,6 +29,8 @@ type BatchRequirements struct {
 	sqlDatabases   map[string]*resourcespb.SqlDatabaseResource
 	secrets        map[string]*resourcespb.SecretResource
 
+	jobs map[string]*resourcespb.JobResource
+
 	policies []*resourcespb.PolicyResource
 
 	errors []error
@@ -111,6 +113,9 @@ func (s *BatchRequirements) Declare(ctx context.Context, req *resourcespb.Resour
 	case resourcespb.ResourceType_Queue:
 		// add a queue
 		s.queues[req.Id.GetName()] = req.GetQueue()
+	case resourcespb.ResourceType_Job:
+		// Add a job
+		s.jobs[req.Id.GetName()] = req.GetJob()
 	}
 
 	return &resourcespb.ResourceDeclareResponse{}, nil
@@ -212,6 +217,7 @@ func NewBatchRequirements(serviceName string, serviceFile string, serviceType st
 		batchName:      serviceName,
 		batchFile:      serviceFile,
 		resourceLock:   sync.Mutex{},
+		jobs:           make(map[string]*resourcespb.JobResource),
 		buckets:        make(map[string]*resourcespb.BucketResource),
 		keyValueStores: make(map[string]*resourcespb.KeyValueStoreResource),
 		topics:         make(map[string]*resourcespb.TopicResource),
