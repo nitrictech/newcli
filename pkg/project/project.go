@@ -62,6 +62,7 @@ type Project struct {
 	Preview   []preview.Feature
 
 	services []Service
+	batches  []Batch
 }
 
 func (p *Project) GetServices() []Service {
@@ -414,11 +415,76 @@ func fromProjectConfiguration(projectConfig *ProjectConfiguration, fs afero.Fs) 
 		}
 	}
 
+	for _, batchSpec := range projectConfig.Batches {
+		files, err := afero.Glob(fs, batchSpec.Match)
+		if err != nil {
+			return nil, fmt.Errorf("unable to match batch files for pattern %s: %w", batchSpec.Match, err)
+		}
+
+		for _, f := range files {
+			relativeServiceEntrypointPath, _ := filepath.Rel(projectConfig.Directory, f)
+
+			serviceName := projectConfig.pathToNormalizedServiceName(relativeServiceEntrypointPath)
+
+			var buildContext *runtime.RuntimeBuildContext
+
+			otherEntryPointFiles := lo.Filter(files, func(file string, index int) bool {
+				return file != f
+			})
+
+			if batchSpec.Runtime != "" {
+				// We have a custom runtime
+				customRuntime, ok := projectConfig.Runtimes[batchSpec.Runtime]
+				if !ok {
+					return nil, fmt.Errorf("unable to find runtime %s", batchSpec.Runtime)
+				}
+
+				buildContext, err = runtime.NewBuildContext(
+					relativeServiceEntrypointPath,
+					customRuntime.Dockerfile,
+					customRuntime.Args,
+					otherEntryPointFiles,
+					fs,
+				)
+				if err != nil {
+					return nil, fmt.Errorf("unable to create build context for custom service file %s: %w", f, err)
+				}
+			} else {
+				buildContext, err = runtime.NewBuildContext(
+					relativeServiceEntrypointPath,
+					"",
+					map[string]string{},
+					otherEntryPointFiles,
+					fs,
+				)
+				if err != nil {
+					return nil, fmt.Errorf("unable to create build context for batch file %s: %w", f, err)
+				}
+			}
+
+			if matches[f] != "" {
+				return nil, fmt.Errorf("batch file %s matched by multiple patterns: %s and %s, batches must only be matched by a single pattern", f, matches[f], batchSpec.Match)
+			}
+
+			matches[f] = batchSpec.Match
+
+			newBatch := Batch{
+				Name:         serviceName,
+				filepath:     f,
+				buildContext: *buildContext,
+				runCmd:       batchSpec.Run,
+			}
+
+			batches = append(services, newBatch)
+		}
+	}
+
 	return &Project{
 		Name:      projectConfig.Name,
 		Directory: projectConfig.Directory,
 		Preview:   projectConfig.Preview,
 		services:  services,
+		batches:   batches,
 	}, nil
 }
 
