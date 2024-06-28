@@ -225,6 +225,9 @@ var stackUpdateCmd = &cobra.Command{
 		serviceRequirements, err := proj.CollectServicesRequirements()
 		tui.CheckErr(err)
 
+		batchRequirements, err := proj.CollectBatchRequirements()
+		tui.CheckErr(err)
+
 		additionalEnvFiles := []string{}
 
 		if envFile != "" {
@@ -272,7 +275,7 @@ var stackUpdateCmd = &cobra.Command{
 			}
 		}
 
-		spec, err := collector.ServiceRequirementsToSpec(proj.Name, envVariables, serviceRequirements)
+		spec, err := collector.ServiceRequirementsToSpec(proj.Name, envVariables, serviceRequirements, batchRequirements)
 		tui.CheckErr(err)
 
 		providerStdout := make(chan string)

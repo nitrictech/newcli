@@ -66,7 +66,7 @@ func (pe ProjectErrors) Error() error {
 }
 
 // buildBucketRequirements gathers and deduplicates all bucket requirements
-func buildBucketRequirements(allServiceRequirements []*ServiceRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
+func buildBucketRequirements(allServiceRequirements []*ServiceRequirements, allBatchRequirements []*BatchRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
 	resources := []*deploymentspb.Resource{}
 
 	for _, serviceRequirements := range allServiceRequirements {
@@ -90,6 +90,32 @@ func buildBucketRequirements(allServiceRequirements []*ServiceRequirements, proj
 				// add the listeners to the bucket configuration
 				res.GetBucket().Listeners = append(res.GetBucket().Listeners, notifications...)
 			} else {
+				res := &deploymentspb.Resource{
+					Id: &resourcespb.ResourceIdentifier{
+						Name: bucketName,
+						Type: resourcespb.ResourceType_Bucket,
+					},
+					Config: &deploymentspb.Resource_Bucket{
+						Bucket: &deploymentspb.Bucket{
+							Listeners: notifications,
+						},
+					},
+				}
+				resources = append(resources, res)
+			}
+		}
+	}
+
+	// TODO: Consolidate duplicate code for batch requirement handling
+	for _, serviceRequirements := range allBatchRequirements {
+		for bucketName := range serviceRequirements.buckets {
+			notifications := []*deploymentspb.BucketListener{}
+
+			_, exists := lo.Find(resources, func(item *deploymentspb.Resource) bool {
+				return item.Id.Name == bucketName
+			})
+
+			if !exists {
 				res := &deploymentspb.Resource{
 					Id: &resourcespb.ResourceIdentifier{
 						Name: bucketName,
@@ -216,11 +242,21 @@ func GetMigrationImageBuildContexts(allServiceRequirements []*ServiceRequirement
 	return imageBuildContexts, nil
 }
 
-func buildDatabaseRequirements(allServiceRequirements []*ServiceRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
+func buildDatabaseRequirements(allServiceRequirements []*ServiceRequirements, allBatchRequirements []*BatchRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
 	resources := []*deploymentspb.Resource{}
 
+	allDatabases := []map[string]*resourcespb.SqlDatabaseResource{}
+
 	for _, serviceRequirements := range allServiceRequirements {
-		for databaseName, dbConfig := range serviceRequirements.sqlDatabases {
+		allDatabases = append(allDatabases, serviceRequirements.sqlDatabases)
+	}
+
+	for _, batchRequirements := range allBatchRequirements {
+		allDatabases = append(allDatabases, batchRequirements.sqlDatabases)
+	}
+
+	for _, dbs := range allDatabases {
+		for databaseName, dbConfig := range dbs {
 			_, exists := lo.Find(resources, func(item *deploymentspb.Resource) bool {
 				return item.Id.Name == databaseName
 			})
@@ -254,7 +290,7 @@ func buildDatabaseRequirements(allServiceRequirements []*ServiceRequirements, pr
 }
 
 // buildTopicRequirements gathers and deduplicates all topic requirements
-func buildTopicRequirements(allServiceRequirements []*ServiceRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
+func buildTopicRequirements(allServiceRequirements []*ServiceRequirements, allBatchRequirements []*BatchRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
 	resources := []*deploymentspb.Resource{}
 
 	for _, serviceRequirements := range allServiceRequirements {
@@ -288,15 +324,50 @@ func buildTopicRequirements(allServiceRequirements []*ServiceRequirements, proje
 		}
 	}
 
+	// FIXME: Reduce duplicate code
+	// TODO: May be unecessary as any topic requirements here would be publishing for services to respond to already
+	for _, batchRequirements := range allBatchRequirements {
+		for topicName := range batchRequirements.topics {
+			res, exists := lo.Find(resources, func(item *deploymentspb.Resource) bool {
+				return item.Id.Name == topicName
+			})
+
+			if !exists {
+				res = &deploymentspb.Resource{
+					Id: &resourcespb.ResourceIdentifier{
+						Name: topicName,
+						Type: resourcespb.ResourceType_Topic,
+					},
+					Config: &deploymentspb.Resource_Topic{
+						Topic: &deploymentspb.Topic{
+							Subscriptions: []*deploymentspb.SubscriptionTarget{},
+						},
+					},
+				}
+				resources = append(resources, res)
+			}
+		}
+	}
+
 	return resources, nil
 }
 
 // buildQueueRequirements gathers and deduplicates all queue requirements
-func buildQueueRequirements(allServiceRequirements []*ServiceRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
+func buildQueueRequirements(allServiceRequirements []*ServiceRequirements, allBatchRequirements []*BatchRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
 	resources := []*deploymentspb.Resource{}
 
+	allQueues := []map[string]*resourcespb.QueueResource{}
+
 	for _, serviceRequirements := range allServiceRequirements {
-		for queueName := range serviceRequirements.queues {
+		allQueues = append(allQueues, serviceRequirements.queues)
+	}
+
+	for _, batchRequirements := range allBatchRequirements {
+		allQueues = append(allQueues, batchRequirements.queues)
+	}
+
+	for _, queues := range allQueues {
+		for queueName := range queues {
 			_, exists := lo.Find(resources, func(item *deploymentspb.Resource) bool {
 				return item.Id.Name == queueName
 			})
@@ -320,11 +391,21 @@ func buildQueueRequirements(allServiceRequirements []*ServiceRequirements, proje
 }
 
 // buildSecretRequirements gathers and deduplicates all secret requirements
-func buildSecretRequirements(allServiceRequirements []*ServiceRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
+func buildSecretRequirements(allServiceRequirements []*ServiceRequirements, allBatchRequirements []*BatchRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
 	resources := []*deploymentspb.Resource{}
 
+	allSecrets := []map[string]*resourcespb.SecretResource{}
+
 	for _, serviceRequirements := range allServiceRequirements {
-		for secretName := range serviceRequirements.secrets {
+		allSecrets = append(allSecrets, serviceRequirements.secrets)
+	}
+
+	for _, batchRequirements := range allBatchRequirements {
+		allSecrets = append(allSecrets, batchRequirements.secrets)
+	}
+
+	for _, secrets := range allSecrets {
+		for secretName := range secrets {
 			_, exists := lo.Find(resources, func(item *deploymentspb.Resource) bool {
 				return item.Id.Name == secretName
 			})
@@ -708,11 +789,21 @@ func policyResourceName(policy *resourcespb.PolicyResource) (string, error) {
 }
 
 // buildKeyValueRequirements gathers and deduplicates all key/value requirements
-func buildKeyValueRequirements(allServiceRequirements []*ServiceRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
+func buildKeyValueRequirements(allServiceRequirements []*ServiceRequirements, allBatchRequirements []*BatchRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
 	resources := []*deploymentspb.Resource{}
 
+	allKeyValueStores := []map[string]*resourcespb.KeyValueStoreResource{}
+
 	for _, serviceRequirements := range allServiceRequirements {
-		for kvStoreName := range serviceRequirements.keyValueStores {
+		allKeyValueStores = append(allKeyValueStores, serviceRequirements.keyValueStores)
+	}
+
+	for _, batchRequirements := range allBatchRequirements {
+		allKeyValueStores = append(allKeyValueStores, batchRequirements.keyValueStores)
+	}
+
+	for _, kvStores := range allKeyValueStores {
+		for kvStoreName := range kvStores {
 			_, exists := lo.Find(resources, func(item *deploymentspb.Resource) bool {
 				return item.Id.Name == kvStoreName
 			})
@@ -735,11 +826,21 @@ func buildKeyValueRequirements(allServiceRequirements []*ServiceRequirements, pr
 // buildPolicyRequirements gathers, compacts, and deduplicates all policy requirements
 // compaction is done by grouping policies by their principals and actions
 // i.e. two or more policies with identical principals and actions, but different resources, will be combined into a single policy covering all resources.
-func buildPolicyRequirements(allServiceRequirements []*ServiceRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
+func buildPolicyRequirements(allServiceRequirements []*ServiceRequirements, allBatchRequirements []*BatchRequirements, projectErrors *ProjectErrors) ([]*deploymentspb.Resource, error) {
 	resources := []*deploymentspb.Resource{}
 
+	allPolicies := [][]*resourcespb.PolicyResource{}
+
 	for _, serviceRequirements := range allServiceRequirements {
-		compactedPoliciesByKey := lo.GroupBy(serviceRequirements.policies, func(item *resourcespb.PolicyResource) string {
+		allPolicies = append(allPolicies, serviceRequirements.policies)
+	}
+
+	for _, batchRequirements := range allBatchRequirements {
+		allPolicies = append(allPolicies, batchRequirements.policies)
+	}
+
+	for _, policies := range allPolicies {
+		compactedPoliciesByKey := lo.GroupBy(policies, func(item *resourcespb.PolicyResource) string {
 			// get the princpals and actions as a unique key (make sure they're sorted for consistency)
 			principalNames := lo.Reduce(item.Principals, func(agg []string, principal *resourcespb.ResourceIdentifier, idx int) []string {
 				return append(agg, principal.Name)
@@ -840,7 +941,7 @@ func checkServiceRequirementErrors(allServiceRequirements []*ServiceRequirements
 }
 
 // convert service requirements to a cloud bill of materials
-func ServiceRequirementsToSpec(projectName string, environmentVariables map[string]string, allServiceRequirements []*ServiceRequirements) (*deploymentspb.Spec, error) {
+func ServiceRequirementsToSpec(projectName string, environmentVariables map[string]string, allServiceRequirements []*ServiceRequirements, allBatchRequirements []*BatchRequirements) (*deploymentspb.Spec, error) {
 	if err := checkServiceRequirementErrors(allServiceRequirements); err != nil {
 		return nil, err
 	}
@@ -851,35 +952,35 @@ func ServiceRequirementsToSpec(projectName string, environmentVariables map[stri
 		Resources: []*deploymentspb.Resource{},
 	}
 
-	databaseResources, err := buildDatabaseRequirements(allServiceRequirements, projectErrors)
+	databaseResources, err := buildDatabaseRequirements(allServiceRequirements, allBatchRequirements, projectErrors)
 	if err != nil {
 		return nil, err
 	}
 
 	newSpec.Resources = append(newSpec.Resources, databaseResources...)
 
-	bucketResources, err := buildBucketRequirements(allServiceRequirements, projectErrors)
+	bucketResources, err := buildBucketRequirements(allServiceRequirements, allBatchRequirements, projectErrors)
 	if err != nil {
 		return nil, err
 	}
 
 	newSpec.Resources = append(newSpec.Resources, bucketResources...)
 
-	topicResources, err := buildTopicRequirements(allServiceRequirements, projectErrors)
+	topicResources, err := buildTopicRequirements(allServiceRequirements, allBatchRequirements, projectErrors)
 	if err != nil {
 		return nil, err
 	}
 
 	newSpec.Resources = append(newSpec.Resources, topicResources...)
 
-	queueResources, err := buildQueueRequirements(allServiceRequirements, projectErrors)
+	queueResources, err := buildQueueRequirements(allServiceRequirements, allBatchRequirements, projectErrors)
 	if err != nil {
 		return nil, err
 	}
 
 	newSpec.Resources = append(newSpec.Resources, queueResources...)
 
-	secretResrources, err := buildSecretRequirements(allServiceRequirements, projectErrors)
+	secretResrources, err := buildSecretRequirements(allServiceRequirements, allBatchRequirements, projectErrors)
 	if err != nil {
 		return nil, err
 	}
@@ -914,14 +1015,14 @@ func ServiceRequirementsToSpec(projectName string, environmentVariables map[stri
 
 	newSpec.Resources = append(newSpec.Resources, apiResources...)
 
-	keyValueResources, err := buildKeyValueRequirements(allServiceRequirements, projectErrors)
+	keyValueResources, err := buildKeyValueRequirements(allServiceRequirements, allBatchRequirements, projectErrors)
 	if err != nil {
 		return nil, err
 	}
 
 	newSpec.Resources = append(newSpec.Resources, keyValueResources...)
 
-	policyResources, err := buildPolicyRequirements(allServiceRequirements, projectErrors)
+	policyResources, err := buildPolicyRequirements(allServiceRequirements, allBatchRequirements, projectErrors)
 	if err != nil {
 		return nil, err
 	}
@@ -944,6 +1045,27 @@ func ServiceRequirementsToSpec(projectName string, environmentVariables map[stri
 					Workers: int32(serviceRequirements.WorkerCount()),
 					Type:    serviceRequirements.serviceType,
 					Env:     environmentVariables,
+				},
+			},
+		})
+	}
+
+	for _, batchRequirements := range allBatchRequirements {
+		newSpec.Resources = append(newSpec.Resources, &deploymentspb.Resource{
+			Id: &resourcespb.ResourceIdentifier{
+				Name: batchRequirements.batchName,
+				Type: resourcespb.ResourceType_Batch,
+			},
+			Config: &deploymentspb.Resource_Batch{
+				Batch: &deploymentspb.Batch{
+					Source: &deploymentspb.Batch_Image{
+						Image: &deploymentspb.ImageSource{
+							Uri: fmt.Sprintf(batchRequirements.batchName),
+						},
+					},
+					// TODO: Remove this
+					Type: "default",
+					Env:  environmentVariables,
 				},
 			},
 		})
