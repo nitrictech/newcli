@@ -43,13 +43,6 @@ import (
 	"github.com/nitrictech/cli/pkg/preview"
 	"github.com/nitrictech/cli/pkg/project/runtime"
 	"github.com/nitrictech/nitric/core/pkg/logger"
-	apispb "github.com/nitrictech/nitric/core/pkg/proto/apis/v1"
-	httppb "github.com/nitrictech/nitric/core/pkg/proto/http/v1"
-	resourcespb "github.com/nitrictech/nitric/core/pkg/proto/resources/v1"
-	schedulespb "github.com/nitrictech/nitric/core/pkg/proto/schedules/v1"
-	storagepb "github.com/nitrictech/nitric/core/pkg/proto/storage/v1"
-	topicspb "github.com/nitrictech/nitric/core/pkg/proto/topics/v1"
-	websocketspb "github.com/nitrictech/nitric/core/pkg/proto/websockets/v1"
 )
 
 const tempBuildDir = "./.nitric/build"
@@ -131,19 +124,12 @@ func (p *Project) BuildServices(fs afero.Fs) (chan ServiceBuildUpdate, error) {
 }
 
 func (p *Project) collectServiceRequirements(service Service) (*collector.ServiceRequirements, error) {
-	serviceRequirements := collector.NewServiceRequirements(service.Name, service.GetFilePath(), service.Type, collector.ExecutionType_Service)
+	serviceRequirements := collector.NewServiceRequirements(service.Name, service.GetFilePath(), service.Type)
 
 	// start a grpc service with this registered
 	grpcServer := grpc.NewServer()
 
-	resourcespb.RegisterResourcesServer(grpcServer, serviceRequirements)
-	apispb.RegisterApiServer(grpcServer, serviceRequirements.ApiServer)
-	schedulespb.RegisterSchedulesServer(grpcServer, serviceRequirements)
-	topicspb.RegisterTopicsServer(grpcServer, serviceRequirements)
-	topicspb.RegisterSubscriberServer(grpcServer, serviceRequirements)
-	websocketspb.RegisterWebsocketHandlerServer(grpcServer, serviceRequirements)
-	storagepb.RegisterStorageListenerServer(grpcServer, serviceRequirements)
-	httppb.RegisterHttpServer(grpcServer, serviceRequirements)
+	serviceRequirements.RegisterServices(grpcServer)
 
 	listener, err := net.Listen("tcp", ":")
 	if err != nil {
@@ -341,6 +327,7 @@ func (pc *ProjectConfiguration) pathToNormalizedServiceName(servicePath string) 
 // fromProjectConfiguration creates a new Instance of a nitric Project from a configuration files contents
 func fromProjectConfiguration(projectConfig *ProjectConfiguration, fs afero.Fs) (*Project, error) {
 	services := []Service{}
+	batches := []Batch{}
 
 	matches := map[string]string{}
 
@@ -475,7 +462,7 @@ func fromProjectConfiguration(projectConfig *ProjectConfiguration, fs afero.Fs) 
 				runCmd:       batchSpec.Run,
 			}
 
-			batches = append(services, newBatch)
+			batches = append(batches, newBatch)
 		}
 	}
 
