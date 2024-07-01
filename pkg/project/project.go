@@ -62,6 +62,68 @@ func (p *Project) GetServices() []Service {
 	return p.services
 }
 
+// TODO: Reduce duplicate code
+// BuildBatches - Builds all the batches in the project
+func (p *Project) BuildBatches(fs afero.Fs) (chan ServiceBuildUpdate, error) {
+	updatesChan := make(chan ServiceBuildUpdate)
+
+	if len(p.services) == 0 {
+		return nil, fmt.Errorf("no services found in project, nothing to build. This may indicate misconfigured `match` patterns in your nitric.yaml file")
+	}
+
+	maxConcurrentBuilds := make(chan struct{}, min(goruntime.NumCPU(), goruntime.GOMAXPROCS(0)))
+
+	waitGroup := sync.WaitGroup{}
+
+	for _, batch := range p.batches {
+		waitGroup.Add(1)
+		// Create writer
+		serviceBuildUpdateWriter := &serviceBuildUpdateWriter{
+			buildUpdateChan: updatesChan,
+			serviceName:     batch.Name,
+		}
+
+		go func(svc Batch, writer io.Writer) {
+			// Acquire a token by filling the maxConcurrentBuilds channel
+			// this will block once the buffer is full
+			maxConcurrentBuilds <- struct{}{}
+
+			// Start goroutine
+			if err := svc.BuildImage(fs, writer); err != nil {
+				updatesChan <- ServiceBuildUpdate{
+					ServiceName: svc.Name,
+					Err:         err,
+					Message:     err.Error(),
+					Status:      ServiceBuildStatus_Error,
+				}
+			} else {
+				updatesChan <- ServiceBuildUpdate{
+					ServiceName: svc.Name,
+					Message:     "Build Complete",
+					Status:      ServiceBuildStatus_Complete,
+				}
+			}
+
+			// release our lock
+			<-maxConcurrentBuilds
+
+			waitGroup.Done()
+		}(batch, serviceBuildUpdateWriter)
+	}
+
+	go func() {
+		waitGroup.Wait()
+		// Drain the semaphore to make sure all goroutines have finished
+		for i := 0; i < cap(maxConcurrentBuilds); i++ {
+			maxConcurrentBuilds <- struct{}{}
+		}
+
+		close(updatesChan)
+	}()
+
+	return updatesChan, nil
+}
+
 // BuildServices - Builds all the services in the project
 func (p *Project) BuildServices(fs afero.Fs) (chan ServiceBuildUpdate, error) {
 	updatesChan := make(chan ServiceBuildUpdate)
@@ -425,6 +487,8 @@ func fromProjectConfiguration(projectConfig *ProjectConfiguration, fs afero.Fs) 
 	batches := []Batch{}
 
 	matches := map[string]string{}
+
+	fmt.Printf("Project Config: %+v\n", projectConfig)
 
 	for _, serviceSpec := range projectConfig.Services {
 		files, err := afero.Glob(fs, serviceSpec.Match)

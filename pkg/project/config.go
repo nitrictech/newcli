@@ -65,7 +65,7 @@ type ProjectConfiguration struct {
 	Name      string                          `yaml:"name"`
 	Directory string                          `yaml:"-"`
 	Services  []ServiceConfiguration          `yaml:"services"`
-	Batches   []BatchConfiguration            `yaml:"batches,omitempty"`
+	Batches   []BatchConfiguration            `yaml:"batches"`
 	Runtimes  map[string]RuntimeConfiguration `yaml:"runtimes,omitempty"`
 	Preview   []preview.Feature               `yaml:"preview,omitempty"`
 }
