@@ -1066,6 +1066,7 @@ func ServiceRequirementsToSpec(projectName string, environmentVariables map[stri
 					// TODO: Remove this
 					Type: "default",
 					Env:  environmentVariables,
+					Jobs: lo.Keys(batchRequirements.jobs),
 				},
 			},
 		})
