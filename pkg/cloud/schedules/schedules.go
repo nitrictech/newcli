@@ -18,7 +18,6 @@ package schedules
 
 import (
 	"fmt"
-	"log"
 	"maps"
 	"strconv"
 	"strings"
@@ -189,12 +188,14 @@ func (l *LocalSchedulesService) Schedule(stream schedulespb.Schedules_ScheduleSe
 	case *schedulespb.RegistrationRequest_Every:
 		parts := strings.Split(strings.TrimSpace(t.Every.Rate), " ")
 		if len(parts) != 2 {
-			return fmt.Errorf("invalid schedule rate: %s", t.Every.Rate)
+			l.errorLogger(serviceName, fmt.Errorf("invalid rate: %s for schedule %s", t.Every.Rate, scheduleName))
+			return nil
 		}
 
 		initialRate, err := strconv.Atoi(parts[0])
 		if err != nil {
-			return fmt.Errorf("invalid schedule rate, must start with an integer")
+			l.errorLogger(serviceName, fmt.Errorf("invalid rate: %s for schedule %s", t.Every.Rate, scheduleName))
+			return nil
 		}
 
 		// Dapr cron bindings only support hours, minutes and seconds. Convert days to hours
@@ -214,10 +215,6 @@ func (l *LocalSchedulesService) Schedule(stream schedulespb.Schedules_ScheduleSe
 	}
 
 	defer l.cron.Remove(cronEntryId)
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// Start the cron scheduler
 	l.cron.Start()
