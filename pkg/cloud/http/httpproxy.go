@@ -90,8 +90,6 @@ func (h *LocalHttpProxy) registerHttpProxy(host string, service *HttpProxyServic
 	h.httpWorkerLock.Lock()
 	defer h.httpWorkerLock.Unlock()
 
-	// pterm.Error.Printfln("got a http proxy")
-
 	h.state[host] = service
 
 	h.publishState()
