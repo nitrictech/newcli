@@ -102,11 +102,13 @@ func (l *LocalSchedulesService) registerSchedule(serviceName string, registratio
 	if !validation.IsValidResourceName(registrationRequest.ScheduleName) {
 		l.errorLogger(serviceName,
 			fmt.Errorf("invalid name: \"%s\" for %s resource", registrationRequest.ScheduleName, resourcespb.ResourceType_Schedule))
+		return nil
 	}
 
 	if l.schedules[registrationRequest.ScheduleName] != nil {
 		existing := l.schedules[registrationRequest.ScheduleName]
-		return fmt.Errorf("failed to register schedule for %s, service %s has already registered a schedule named %s", serviceName, existing.ServiceName, existing.Schedule.ScheduleName)
+
+		return fmt.Errorf("conflict: schedule \"%s\" already taken by service %s", existing.Schedule.ScheduleName, existing.ServiceName)
 	}
 
 	l.schedules[registrationRequest.ScheduleName] = &ScheduledService{
@@ -159,7 +161,7 @@ func (l *LocalSchedulesService) Schedule(stream schedulespb.Schedules_ScheduleSe
 		return err
 	}
 
-	peekableStream := grpcx.NewPeekableStreamServer[*schedulespb.ServerMessage, *schedulespb.ClientMessage](stream)
+	peekableStream := grpcx.NewPeekableStreamServer(stream)
 
 	firstRequest, err := peekableStream.Peek()
 	if err != nil {
@@ -172,7 +174,8 @@ func (l *LocalSchedulesService) Schedule(stream schedulespb.Schedules_ScheduleSe
 
 	err = l.registerSchedule(serviceName, firstRequest.GetRegistrationRequest())
 	if err != nil {
-		return fmt.Errorf("error registering schedule: %s", err.Error())
+		l.errorLogger(serviceName, err)
+		return nil
 	}
 
 	defer l.unregisterSchedule(serviceName, firstRequest.GetRegistrationRequest())
