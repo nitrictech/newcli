@@ -155,7 +155,7 @@ func (l *LocalResourcesService) ClearServiceResources(serviceName string) {
 	l.state.ApiSecurityDefinitions.ClearRequestingService(serviceName)
 
 	// TODO: lock
-	// delete(l.state.ServiceErrors, serviceName)
+	delete(l.state.ServiceErrors, serviceName)
 	delete(l.serviceErrors, serviceName)
 }
 
