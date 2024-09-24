@@ -17,6 +17,7 @@
 package system
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/asaskevich/EventBus"
@@ -48,6 +49,10 @@ func getInstance() *SystemLogsService {
 func Log(msg string) {
 	s := getInstance()
 	s.bus.Publish(logTopic, msg)
+}
+
+func Logf(format string, args ...interface{}) {
+	Log(fmt.Sprintf(format, args...))
 }
 
 func SubscribeToLogs(subscription func(string)) {

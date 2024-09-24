@@ -22,6 +22,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"sync"
 
 	"github.com/asaskevich/EventBus"
 
@@ -42,13 +44,16 @@ type LocalResourcesState struct {
 	Queues                 *ResourceRegistrar[resourcespb.QueueResource]
 	SqlDatabases           *ResourceRegistrar[resourcespb.SqlDatabaseResource]
 	ApiSecurityDefinitions *ResourceRegistrar[resourcespb.ApiSecurityDefinitionResource]
-	Errors                 *ResourceRegistrar[error]
+
+	ServiceErrors map[string][]error
 }
 
 type LocalResourcesService struct {
 	gateway *gateway.LocalGatewayService
 
-	state LocalResourcesState
+	state         LocalResourcesState
+	errLock       sync.RWMutex
+	serviceErrors map[string][]error
 
 	bus EventBus.Bus
 }
@@ -82,10 +87,9 @@ func (l *LocalResourcesService) Declare(ctx context.Context, req *resourcespb.Re
 		return nil, err
 	}
 
-	if !validation.IsValidResourceName(req.Id.Name) {
-		err := fmt.Errorf("Invalid resource name: %s", req.Id.Name)
+	if !validation.IsValidResourceName(req.Id.Name) && req.Id.Type != resourcespb.ResourceType_Policy {
 		// register as an error against the service
-		l.state.Errors.Register(req.Id.Name, serviceName, &err)
+		l.LogServiceError(serviceName, fmt.Errorf("invalid name: \"%s\" for %s resource", req.Id.Name, req.Id.Type.String()))
 	}
 
 	switch req.Id.Type {
@@ -128,8 +132,20 @@ func (l *LocalResourcesService) Declare(ctx context.Context, req *resourcespb.Re
 	return &resourcespb.ResourceDeclareResponse{}, nil
 }
 
+func (l *LocalResourcesService) LogServiceError(serviceName string, err error) {
+	l.errLock.Lock()
+	defer l.errLock.Unlock()
+
+	l.serviceErrors[serviceName] = append(l.state.ServiceErrors[serviceName], err)
+
+	l.state.ServiceErrors = maps.Clone(l.serviceErrors)
+}
+
 // ClearServiceResources - Clear all resources registered by a service, typically done when the service terminates or is restarted
 func (l *LocalResourcesService) ClearServiceResources(serviceName string) {
+	l.errLock.Lock()
+	defer l.errLock.Unlock()
+
 	l.state.Buckets.ClearRequestingService(serviceName)
 	l.state.KeyValueStores.ClearRequestingService(serviceName)
 	l.state.Policies.ClearRequestingService(serviceName)
@@ -137,7 +153,10 @@ func (l *LocalResourcesService) ClearServiceResources(serviceName string) {
 	l.state.Topics.ClearRequestingService(serviceName)
 	l.state.Queues.ClearRequestingService(serviceName)
 	l.state.ApiSecurityDefinitions.ClearRequestingService(serviceName)
-	l.state.Errors.ClearRequestingService(serviceName)
+
+	// TODO: lock
+	// delete(l.state.ServiceErrors, serviceName)
+	delete(l.serviceErrors, serviceName)
 }
 
 func NewLocalResourcesService(opts LocalResourcesOptions) *LocalResourcesService {
@@ -151,9 +170,10 @@ func NewLocalResourcesService(opts LocalResourcesOptions) *LocalResourcesService
 			Queues:                 NewResourceRegistrar[resourcespb.QueueResource](),
 			ApiSecurityDefinitions: NewResourceRegistrar[resourcespb.ApiSecurityDefinitionResource](),
 			SqlDatabases:           NewResourceRegistrar[resourcespb.SqlDatabaseResource](),
-			Errors:                 NewResourceRegistrar[error](),
+			ServiceErrors:          map[string][]error{},
 		},
-		gateway: opts.Gateway,
-		bus:     EventBus.New(),
+		serviceErrors: map[string][]error{},
+		gateway:       opts.Gateway,
+		bus:           EventBus.New(),
 	}
 }

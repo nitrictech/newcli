@@ -166,6 +166,19 @@ type LocalCloudOptions struct {
 }
 
 func New(projectName string, opts LocalCloudOptions) (*LocalCloud, error) {
+	localGateway, err := gateway.NewGateway(gateway.NewGatewayOpts{
+		TLSCredentials: opts.TLSCredentials,
+		LogWriter:      opts.LogWriter,
+		LocalConfig:    opts.LocalConfig,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	localResources := resources.NewLocalResourcesService(resources.LocalResourcesOptions{
+		Gateway: localGateway,
+	})
+
 	localTopics, err := topics.NewLocalTopicsService()
 	if err != nil {
 		return nil, err
@@ -185,8 +198,7 @@ func New(projectName string, opts LocalCloudOptions) (*LocalCloud, error) {
 	}
 
 	localApis := apis.NewLocalApiGatewayService()
-
-	localSchedules := schedules.NewLocalSchedulesService()
+	localSchedules := schedules.NewLocalSchedulesService(localResources.LogServiceError)
 	localHttpProxy := http.NewLocalHttpProxyService()
 
 	localSecrets, err := secrets.NewSecretService()
@@ -197,19 +209,6 @@ func New(projectName string, opts LocalCloudOptions) (*LocalCloud, error) {
 	if opts.LogWriter == nil {
 		opts.LogWriter = io.Discard
 	}
-
-	localGateway, err := gateway.NewGateway(gateway.NewGatewayOpts{
-		TLSCredentials: opts.TLSCredentials,
-		LogWriter:      opts.LogWriter,
-		LocalConfig:    opts.LocalConfig,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	localResources := resources.NewLocalResourcesService(resources.LocalResourcesOptions{
-		Gateway: localGateway,
-	})
 
 	keyvalueService, err := keyvalue.NewBoltService()
 	if err != nil {

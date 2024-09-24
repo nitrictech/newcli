@@ -27,8 +27,11 @@ import (
 	"github.com/asaskevich/EventBus"
 	"github.com/robfig/cron/v3"
 
+	"github.com/nitrictech/cli/pkg/cloud/errorsx"
 	"github.com/nitrictech/cli/pkg/grpcx"
+	"github.com/nitrictech/cli/pkg/validation"
 	"github.com/nitrictech/nitric/core/pkg/logger"
+	resourcespb "github.com/nitrictech/nitric/core/pkg/proto/resources/v1"
 	schedulespb "github.com/nitrictech/nitric/core/pkg/proto/schedules/v1"
 	"github.com/nitrictech/nitric/core/pkg/workers/schedules"
 )
@@ -54,6 +57,8 @@ type LocalSchedulesService struct {
 	cron *cron.Cron
 
 	schedulesLock sync.RWMutex
+
+	errorLogger errorsx.ServiceErrorLogger
 
 	schedules State
 	bus       EventBus.Bus
@@ -93,6 +98,11 @@ func (l *LocalSchedulesService) GetSchedules() State {
 func (l *LocalSchedulesService) registerSchedule(serviceName string, registrationRequest *schedulespb.RegistrationRequest) error {
 	l.schedulesLock.Lock()
 	defer l.schedulesLock.Unlock()
+
+	if !validation.IsValidResourceName(registrationRequest.ScheduleName) {
+		l.errorLogger(serviceName,
+			fmt.Errorf("invalid name: \"%s\" for %s resource", registrationRequest.ScheduleName, resourcespb.ResourceType_Schedule))
+	}
 
 	if l.schedules[registrationRequest.ScheduleName] != nil {
 		existing := l.schedules[registrationRequest.ScheduleName]
@@ -212,8 +222,9 @@ func (l *LocalSchedulesService) Schedule(stream schedulespb.Schedules_ScheduleSe
 	return l.ScheduleWorkerManager.Schedule(peekableStream)
 }
 
-func NewLocalSchedulesService() *LocalSchedulesService {
+func NewLocalSchedulesService(errorLogger errorsx.ServiceErrorLogger) *LocalSchedulesService {
 	return &LocalSchedulesService{
+		errorLogger:           errorLogger,
 		ScheduleWorkerManager: schedules.New(),
 		cron:                  cron.New(),
 		bus:                   EventBus.New(),
