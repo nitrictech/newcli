@@ -69,10 +69,6 @@ func (p *Project) GetBatchServices() []Batch {
 func (p *Project) BuildBatches(fs afero.Fs, useBuilder bool) (chan ServiceBuildUpdate, error) {
 	updatesChan := make(chan ServiceBuildUpdate)
 
-	if len(p.services) == 0 {
-		return nil, fmt.Errorf("no services found in project, nothing to build. This may indicate misconfigured `match` patterns in your nitric.yaml file")
-	}
-
 	maxConcurrentBuilds := make(chan struct{}, min(goruntime.NumCPU(), goruntime.GOMAXPROCS(0)))
 
 	waitGroup := sync.WaitGroup{}
@@ -129,10 +125,6 @@ func (p *Project) BuildBatches(fs afero.Fs, useBuilder bool) (chan ServiceBuildU
 // BuildServices - Builds all the services in the project
 func (p *Project) BuildServices(fs afero.Fs, useBuilder bool) (chan ServiceBuildUpdate, error) {
 	updatesChan := make(chan ServiceBuildUpdate)
-
-	if len(p.services) == 0 {
-		return nil, fmt.Errorf("no services found in project, nothing to build. This may indicate misconfigured `match` patterns in your nitric.yaml file")
-	}
 
 	maxConcurrentBuilds := make(chan struct{}, min(goruntime.NumCPU(), goruntime.GOMAXPROCS(0)))
 
