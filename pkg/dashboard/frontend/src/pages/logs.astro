@@ -1,0 +1,8 @@
+---
+import Layout from "../layouts/Layout.astro";
+import LogsExplorer from "@/components/logs/LogsExplorer";
+---
+
+<Layout title="Logs | Local Dashboard | Nitric">
+  <LogsExplorer client:only="react" />
+</Layout>

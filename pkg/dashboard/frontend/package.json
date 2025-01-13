@@ -23,6 +23,7 @@
     "@codemirror/lint": "^6.8.1",
     "@dagrejs/dagre": "^1.0.4",
     "@fontsource/archivo": "^4.5.11",
+    "@fontsource/jetbrains-mono": "^5.1.2",
     "@fontsource/sora": "^4.5.12",
     "@heroicons/react": "^2.1.1",
     "@prantlf/jsonlint": "^14.0.3",

@@ -8,7 +8,7 @@ module.exports = {
     fontFamily: {
       display: ["'Sora'", 'sans-serif'],
       body: fontFamily.sans,
-      mono: fontFamily.mono,
+      mono: ['JetBrains Mono', ...fontFamily.mono],
     },
     container: {
       center: true,

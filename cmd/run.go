@@ -25,6 +25,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/samber/lo"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -86,6 +87,9 @@ var runCmd = &cobra.Command{
 		logWriter, err := fs.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 		tui.CheckErr(err)
 		defer logWriter.Close()
+
+		// Initialize the system service log logger
+		system.InitializeServiceLogger(proj.Directory)
 
 		teaOptions := []tea.ProgramOption{}
 		if isNonInteractive() {
@@ -207,10 +211,20 @@ var runCmd = &cobra.Command{
 				close(stopChan)
 			}()
 
+			logger := system.GetServiceLogger()
+
 			for {
 				select {
 				case update := <-allUpdates:
 					fmt.Printf("%s [%s]: %s", update.ServiceName, update.Status, update.Message)
+					// Write log to file
+					level := logrus.InfoLevel
+
+					if update.Status == project.ServiceRunStatus_Error {
+						level = logrus.ErrorLevel
+					}
+
+					logger.WriteLog(level, update.Message, update.Label)
 				case <-stopChan:
 					fmt.Println("Shutting down services - exiting")
 					return nil

@@ -738,6 +738,8 @@ func (d *Dashboard) Start() error {
 
 	http.HandleFunc("/api/ws-clear-messages", d.handleWebsocketMessagesClear())
 
+	http.HandleFunc("/api/logs", d.createServiceLogsHandler(d.project))
+
 	d.wsWebSocket.HandleConnect(func(s *melody.Session) {
 		// Send a welcome message to the client
 		err := d.sendWebsocketsUpdate()

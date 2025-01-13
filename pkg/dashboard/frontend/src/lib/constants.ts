@@ -6,6 +6,8 @@ export const SQL_API = `http://${getHost()}/api/sql`
 
 export const SECRETS_API = `http://${getHost()}/api/secrets`
 
+export const LOGS_API = `http://${getHost()}/api/logs`
+
 export const TABLE_QUERY = `
 SELECT
     tbl.schemaname AS schema_name,

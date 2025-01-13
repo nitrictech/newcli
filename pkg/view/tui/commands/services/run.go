@@ -24,9 +24,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
+	"github.com/sirupsen/logrus"
 
 	"github.com/nitrictech/cli/pkg/cloud"
 	"github.com/nitrictech/cli/pkg/project"
+	"github.com/nitrictech/cli/pkg/system"
 	"github.com/nitrictech/cli/pkg/view/tui"
 	"github.com/nitrictech/cli/pkg/view/tui/commands/local"
 	"github.com/nitrictech/cli/pkg/view/tui/components/view"
@@ -83,6 +85,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// we know we have a service update
 		m.serviceStatus[msg.Value.ServiceName] = msg.Value
 		m.serviceRunUpdates = append(m.serviceRunUpdates, msg.Value)
+
+		logger := system.GetServiceLogger()
+		// Write log to file and handle any errors
+		level := logrus.InfoLevel
+
+		if msg.Value.Status == project.ServiceRunStatus_Error {
+			level = logrus.ErrorLevel
+		}
+
+		logger.WriteLog(level, msg.Value.Message, msg.Value.Label)
 
 		return m, reactive.AwaitChannel(msg.Source)
 	default:

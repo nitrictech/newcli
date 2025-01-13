@@ -121,6 +121,10 @@ func NewNitricLogFile(stackPath string) (string, error) {
 	return tf.Name(), nil
 }
 
+func NitricServiceLogFile(stackPath string) string {
+	return filepath.Join(NitricTmpDir(stackPath), "./services.log")
+}
+
 func NitricTlsCredentialsPath(stackPath string) string {
 	return filepath.Join(NitricTmpDir(stackPath), "./tls")
 }

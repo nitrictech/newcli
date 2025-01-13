@@ -1238,6 +1238,11 @@
   resolved "https://registry.yarnpkg.com/@fontsource/archivo/-/archivo-4.5.11.tgz#0699637416b4928e0ec231adb6131ab9b4c135ab"
   integrity sha512-2bff98S2meggVKZ4cTCbckVhDid7Hgp32y7jHt2pJnJC3vEDOuPEERn2XZl5EAxcAwc/n63DI/m5m5B7hmdocg==
 
+"@fontsource/jetbrains-mono@^5.1.2":
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/@fontsource/jetbrains-mono/-/jetbrains-mono-5.1.2.tgz#dcd74209b9aa5ba9f21eafaba09c8dd758333cde"
+  integrity sha512-muYZK6W3NTrKpKTjoF2dkrtMjXLlPZhniLiLjMmfegRibl2L6jUJh9gB6UcbcZs3zHdIYTmzMkXNbNoI2kXX3Q==
+
 "@fontsource/sora@^4.5.12":
   version "4.5.12"
   resolved "https://registry.yarnpkg.com/@fontsource/sora/-/sora-4.5.12.tgz#07cf449f699a5eea95b148478e521e0b27bec7ec"
