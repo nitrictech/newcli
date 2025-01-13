@@ -65,6 +65,11 @@ func NitricTemplatesDir() string {
 	return filepath.Join(NitricHomeDir(), "store")
 }
 
+// NitricSchemasDir returns the directory to place schema related data.
+func NitricSchemasDir() string {
+	return filepath.Join(NitricHomeDir(), "schemas")
+}
+
 func NitricStacksDir() (string, error) {
 	homeDir := NitricHomeDir()
 	stacksDir := path.Join(homeDir, "stacks")

@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/nitrictech/cli/pkg/paths"
+	"github.com/nitrictech/cli/pkg/schemas"
 	"github.com/nitrictech/cli/pkg/update"
 	"github.com/nitrictech/cli/pkg/view/tui"
 )
@@ -73,6 +74,12 @@ var rootCmd = &cobra.Command{
 		update.PrintOutdatedCLIWarning()
 		// an unstyled \n is always needed at the end of the view to ensure the last line renders
 		fmt.Println()
+
+		// Check/install schemas
+		err := schemas.Install()
+		if err != nil {
+			tui.CheckErr(fmt.Errorf("Failed to create nitric schema. %w", err))
+		}
 	},
 }
 
